@@ -36,9 +36,10 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = path.startsWith('/login')
   const isPublicFile = path.match(/\.(png|jpg|jpeg|gif|ico|svg)$/)
   const isApi = path.startsWith('/api')
+  const isPwaFile = path === '/sw.js' || path === '/manifest.json'
 
   // إذا لم يكن مسجلاً ويحاول الدخول لصفحات محمية، وجهه لتسجيل الدخول
-  if (!user && !isAuthPage && !isPublicFile && !isApi) {
+  if (!user && !isAuthPage && !isPublicFile && !isApi && !isPwaFile) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
