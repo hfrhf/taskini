@@ -58,8 +58,8 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * مطابقة جميع المسارات ما عدا ملفات next/static و next/image والأيقونات والملفات العامة
+     * مطابقة جميع المسارات ما عدا ملفات next/static و next/image والأيقونات والملفات العامة وملفات PWA
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
