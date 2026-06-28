@@ -440,5 +440,49 @@ create policy "Allow all authenticated users to read standup_comments" on public
 create policy "Allow users to manage their own comments" on public.standup_comments
   for all using (auth.uid() = user_id);
 
+-- 17. إنشاء جداول العصف الذهني والأفكار (Ideas & Upvotes & Comments)
+create table if not exists public.ideas (
+  id uuid default gen_random_uuid() primary key,
+  title text not null,
+  description text,
+  category text not null default 'general', -- 'design', 'tech', 'marketing', 'general'
+  status text not null default 'draft' check (status in ('draft', 'discussing', 'approved', 'converted')),
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  converted_task_id uuid references public.tasks(id) on delete set null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.ideas enable row level security;
+create policy "Allow all authenticated users to view ideas" on public.ideas for select using (auth.role() = 'authenticated');
+create policy "Allow users to create their own ideas" on public.ideas for insert with check (auth.uid() = user_id);
+create policy "Allow owners to update their own ideas" on public.ideas for update using (auth.uid() = user_id);
+create policy "Allow owners/admins to delete ideas" on public.ideas for delete using (auth.uid() = user_id or exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+
+create table if not exists public.idea_upvotes (
+  idea_id uuid references public.ideas(id) on delete cascade not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  primary key (idea_id, user_id)
+);
+
+alter table public.idea_upvotes enable row level security;
+create policy "Allow all users to view upvotes" on public.idea_upvotes for select using (auth.role() = 'authenticated');
+create policy "Allow users to toggle their own upvote" on public.idea_upvotes for insert with check (auth.uid() = user_id);
+create policy "Allow users to delete their own upvote" on public.idea_upvotes for delete using (auth.uid() = user_id);
+
+create table if not exists public.idea_comments (
+  id uuid default gen_random_uuid() primary key,
+  idea_id uuid references public.ideas(id) on delete cascade not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  content text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.idea_comments enable row level security;
+create policy "Allow all users to view idea comments" on public.idea_comments for select using (auth.role() = 'authenticated');
+create policy "Allow users to insert their own comments" on public.idea_comments for insert with check (auth.uid() = user_id);
+create policy "Allow owners to update their own comments" on public.idea_comments for update using (auth.uid() = user_id);
+create policy "Allow owners/admins to delete comments" on public.idea_comments for delete using (auth.uid() = user_id or exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+
 
 

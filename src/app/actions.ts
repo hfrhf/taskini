@@ -1528,6 +1528,219 @@ export async function updateStandupComment(commentId: string, content: string) {
   return updatedComment
 }
 
+// --------------------------------------------------------------------
+// 17. عمليات لوحة الأفكار والعصف الذهني (Ideas Board Actions)
+// --------------------------------------------------------------------
+
+export async function getIdeas() {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) throw new Error('غير مصرح بالدخول')
+
+  const { data, error } = await supabase
+    .from('ideas')
+    .select(`
+      *,
+      user:profiles(name, avatar_url),
+      idea_upvotes(user_id),
+      idea_comments(
+        id,
+        content,
+        created_at,
+        user_id,
+        user:profiles(name, avatar_url)
+      )
+    `)
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(error.message)
+
+  return (data || []).map((idea: any) => {
+    const upvotes = idea.idea_upvotes || []
+    const hasUpvoted = upvotes.some((u: any) => u.user_id === profile.id)
+    
+    // ترتيب التعليقات تصاعدياً حسب تاريخ الإنشاء
+    const sortedComments = (idea.idea_comments || []).sort(
+      (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    )
+
+    return {
+      ...idea,
+      upvotes_count: upvotes.length,
+      comments_count: sortedComments.length,
+      idea_comments: sortedComments,
+      has_upvoted: hasUpvoted
+    }
+  })
+}
+
+export async function createIdea(title: string, description: string, category: string) {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) throw new Error('غير مصرح بالدخول')
+
+  if (!title.trim()) throw new Error('عنوان الفكرة مطلوب')
+
+  const { data, error } = await supabase
+    .from('ideas')
+    .insert({
+      title: title.trim(),
+      description: description.trim(),
+      category,
+      user_id: profile.id,
+      status: 'draft'
+    })
+    .select()
+    .single()
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/ideas')
+  return data
+}
+
+export async function toggleIdeaUpvote(ideaId: string) {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) throw new Error('غير مصرح بالدخول')
+
+  const { data: existing, error: checkErr } = await supabase
+    .from('idea_upvotes')
+    .select('idea_id')
+    .eq('idea_id', ideaId)
+    .eq('user_id', profile.id)
+    .maybeSingle()
+
+  if (checkErr) throw new Error(checkErr.message)
+
+  if (existing) {
+    // إلغاء التصويت
+    const { error: deleteErr } = await supabase
+      .from('idea_upvotes')
+      .delete()
+      .eq('idea_id', ideaId)
+      .eq('user_id', profile.id)
+
+    if (deleteErr) throw new Error(deleteErr.message)
+  } else {
+    // إضافة تصويت جديد
+    const { error: insertErr } = await supabase
+      .from('idea_upvotes')
+      .insert({
+        idea_id: ideaId,
+        user_id: profile.id
+      })
+
+    if (insertErr) throw new Error(insertErr.message)
+  }
+
+  revalidatePath('/ideas')
+  return { success: true }
+}
+
+export async function addIdeaComment(ideaId: string, content: string) {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) throw new Error('غير مصرح بالدخول')
+
+  if (!content.trim()) throw new Error('محتوى التعليق لا يمكن أن يكون فارغاً')
+
+  const { data, error } = await supabase
+    .from('idea_comments')
+    .insert({
+      idea_id: ideaId,
+      user_id: profile.id,
+      content: content.trim()
+    })
+    .select()
+    .single()
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/ideas')
+  return data
+}
+
+export async function deleteIdeaComment(commentId: string) {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) throw new Error('غير مصرح بالدخول')
+
+  const { data: comment, error: fetchErr } = await supabase
+    .from('idea_comments')
+    .select('user_id')
+    .eq('id', commentId)
+    .single()
+
+  if (fetchErr) throw new Error(fetchErr.message)
+
+  if (comment.user_id !== profile.id && profile.role !== 'admin') {
+    throw new Error('غير مصرح لك بحذف هذا التعليق')
+  }
+
+  const { error: deleteErr } = await supabase
+    .from('idea_comments')
+    .delete()
+    .eq('id', commentId)
+
+  if (deleteErr) throw new Error(deleteErr.message)
+
+  revalidatePath('/ideas')
+  return { success: true }
+}
+
+export async function convertIdeaToTask(
+  ideaId: string,
+  groupId: string,
+  assignedTo: string | null,
+  dueDate: string
+) {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) throw new Error('غير مصرح بالدخول')
+
+  // جلب الفكرة الأصلية
+  const { data: idea, error: ideaErr } = await supabase
+    .from('ideas')
+    .select('*')
+    .eq('id', ideaId)
+    .single()
+
+  if (ideaErr) throw new Error(ideaErr.message)
+
+  // إنشاء المهمة الجديدة
+  const { data: task, error: taskErr } = await supabase
+    .from('tasks')
+    .insert({
+      group_id: groupId,
+      title: idea.title,
+      description: idea.description || '',
+      assigned_to: assignedTo,
+      due_date: dueDate,
+      status: 'not_started',
+      color: 'classic'
+    })
+    .select()
+    .single()
+
+  if (taskErr) throw new Error(taskErr.message)
+
+  // ربط الفكرة بالمهمة وتغيير الحالة
+  const { error: updateErr } = await supabase
+    .from('ideas')
+    .update({
+      converted_task_id: task.id,
+      status: 'converted'
+    })
+    .eq('id', ideaId)
+
+  if (updateErr) throw new Error(updateErr.message)
+
+  revalidatePath('/')
+  revalidatePath('/ideas')
+  return task
+}
+
 
 
 
