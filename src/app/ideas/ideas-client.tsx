@@ -123,6 +123,7 @@ export default function IdeasClient({
   const [ideas, setIdeas] = useState<Idea[]>(initialIdeas || [])
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [sortBy, setSortBy] = useState<'popular' | 'newest'>('popular')
+  const [showConverted, setShowConverted] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null)
   
   // حالات النموذج واللوح المنزلق
@@ -334,7 +335,11 @@ export default function IdeasClient({
 
   // تصفية الأفكار وفرزها
   const filteredIdeas = ideas
-    .filter(idea => selectedCategory === 'all' || idea.category === selectedCategory)
+    .filter(idea => {
+      const categoryMatch = selectedCategory === 'all' || idea.category === selectedCategory
+      const statusMatch = showConverted ? true : idea.status !== 'converted'
+      return categoryMatch && statusMatch
+    })
     .sort((a, b) => {
       if (sortBy === 'popular') {
         return b.upvotes_count - a.upvotes_count
@@ -408,8 +413,22 @@ export default function IdeasClient({
               })}
             </div>
 
-            {/* الفرز */}
-            <div className="flex items-center gap-2 self-end lg:self-auto shrink-0">
+            {/* الفرز وعرض المهام المحولة */}
+            <div className="flex flex-wrap items-center gap-3 self-end lg:self-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowConverted(!showConverted)}
+                className={`text-xs font-bold px-3.5 py-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 ${
+                  showConverted
+                    ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-500 hover:bg-indigo-500/20'
+                    : 'bg-theme-bg border-theme-border text-theme-text-muted hover:text-theme-text hover:bg-theme-border'
+                }`}
+                title={showConverted ? 'إخفاء الأفكار التي تحولت لمهام' : 'عرض الأفكار التي تحولت لمهام'}
+              >
+                <span>🚀 المحوّلة لمهام</span>
+                <span className={`w-1.5 h-1.5 rounded-full transition-all ${showConverted ? 'bg-indigo-500 scale-125' : 'bg-transparent border border-theme-text-muted'}`}></span>
+              </button>
+
               <span className="text-xs font-bold text-theme-text-muted">ترتيب حسب:</span>
               <select
                 value={sortBy}
