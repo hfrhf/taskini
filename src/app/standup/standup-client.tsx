@@ -776,7 +776,7 @@ export default function StandupClient({ currentProfile, teamProfiles, initialMil
                       <div
                         key={standup.id}
                         onClick={() => setActiveStandupForModal(standup)}
-                        className={`bg-theme-panel rounded-2xl p-5 border shadow-sm transition-all duration-200 flex flex-col gap-4 relative overflow-hidden cursor-pointer hover:border-theme-accent/30 hover:shadow-md ${
+                        className={`bg-theme-panel rounded-2xl p-5 border shadow-sm transition-[border-color,box-shadow] duration-200 flex flex-col gap-4 relative overflow-hidden cursor-pointer hover:border-theme-accent/30 hover:shadow-md transform-gpu isolate ${
                           hasBlockers 
                             ? 'border-rose-500/30 bg-gradient-to-br from-theme-panel to-rose-500/[0.02]' 
                             : 'border-theme-border'
