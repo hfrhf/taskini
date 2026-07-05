@@ -871,13 +871,13 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
 
       {/* ب) نافذة إسناد مهمة جديدة */}
       {isTaskModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" onClick={() => setIsTaskModalOpen(false)}></div>
-          <div className="relative bg-theme-panel w-full max-w-lg mx-4 rounded-3xl p-6 sm:p-8 shadow-2xl border border-theme-border animate-modal-in z-10 text-right">
-            <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-xs animate-fade-in" onClick={() => setIsTaskModalOpen(false)}></div>
+          <div className="relative bg-theme-panel w-full max-w-lg rounded-3xl p-5 sm:p-7 shadow-[0_25px_60px_rgba(0,0,0,0.4)] border border-theme-border animate-modal-in z-10 text-right max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div className="flex items-start justify-between gap-4 mb-4 border-b border-theme-border/50 pb-2">
               <div>
-                <h3 className="text-lg font-bold text-theme-text">إسناد مهمة جديدة</h3>
-                <p className="text-xs text-theme-text-muted mt-1">اختر المسؤول وتاريخ التسليم ولون التمييز البصري للكرت</p>
+                <h3 className="text-base font-black text-theme-text">إسناد مهمة جديدة</h3>
+                <p className="text-xs text-theme-text-muted mt-0.5">اختر المسؤول وتاريخ التسليم ولون التمييز البصري للكرت</p>
               </div>
               <button 
                 onClick={() => setIsTaskModalOpen(false)}
@@ -887,35 +887,35 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
               </button>
             </div>
 
-            <form onSubmit={handleAddTask} className="space-y-4">
+            <form onSubmit={handleAddTask} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-bold text-theme-text-muted mb-1.5">عنوان المهمة</label>
+                <label className="block text-xs font-bold text-theme-text-muted mb-1">عنوان المهمة</label>
                 <input 
                   type="text" 
                   name="title" 
                   required 
-                  className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-3 text-xs transition-all outline-none" 
+                  className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-2.5 text-xs transition-all outline-none" 
                   placeholder="مثال: تفعيل بوابات الدفع الإلكتروني"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-theme-text-muted mb-1.5">الوصف والتفاصيل</label>
+                <label className="block text-xs font-bold text-theme-text-muted mb-1">الوصف والتفاصيل</label>
                 <textarea 
                   name="description" 
-                  rows={3}
-                  className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-3 text-xs transition-all outline-none resize-none" 
+                  rows={2}
+                  className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-2.5 text-xs transition-all outline-none resize-none" 
                   placeholder="اكتب الخطوات أو المتطلبات لإنجاز هذه المهمة..."
                 ></textarea>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-theme-text-muted mb-1.5">المسؤول عن المهمة</label>
+                  <label className="block text-xs font-bold text-theme-text-muted mb-1">المسؤول عن المهمة</label>
                   <select 
                     name="assigned_to"
                     required
-                    className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-3 text-xs transition-all outline-none cursor-pointer"
+                    className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-2.5 text-xs transition-all outline-none cursor-pointer"
                   >
                     {currentProfile.role === 'admin' ? (
                       teamProfiles.map(u => (
@@ -927,63 +927,65 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-theme-text-muted mb-1.5">الموعد النهائي للتسليم</label>
+                  <label className="block text-xs font-bold text-theme-text-muted mb-1">الموعد النهائي للتسليم</label>
                   <DatePicker 
                     name="due_date"
                     value={taskDueDate}
                     onChange={setTaskDueDate}
-                    className="bg-theme-input focus:bg-theme-panel py-3"
+                    className="bg-theme-input focus:bg-theme-panel py-2.5"
                     direction="up"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-theme-text-muted mb-1.5">المحطة الكبرى المرتبطة (Milestone)</label>
-                <select 
-                  name="milestone_id"
-                  className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-3 text-xs transition-all outline-none cursor-pointer"
-                >
-                  <option value="">أعمال عامة / غير مرتبطة بمحطة</option>
-                  {milestones.filter(m => m.status === 'active').map(m => (
-                    <option key={m.id} value={m.id}>🎯 {m.title}</option>
-                  ))}
-                </select>
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-theme-text-muted mb-1">المحطة الكبرى المرتبطة (Milestone)</label>
+                  <select 
+                    name="milestone_id"
+                    className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-2.5 text-xs transition-all outline-none cursor-pointer"
+                  >
+                    <option value="">أعمال عامة / غير مرتبطة بمحطة</option>
+                    {milestones.filter(m => m.status === 'active').map(m => (
+                      <option key={m.id} value={m.id}>🎯 {m.title}</option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label className="block text-xs font-bold text-theme-text-muted mb-1.5">وقت العمل المسجل مسبقاً (اختياري)</label>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 flex items-center gap-2">
-                    <input 
-                      type="number"
-                      name="work_hours"
-                      min={0}
-                      max={24}
-                      defaultValue={0}
-                      className="w-full text-center bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl py-2.5 text-xs transition-all outline-none font-bold"
-                      placeholder="0"
-                    />
-                    <span className="text-xs font-bold text-theme-text-muted">ساعة</span>
-                  </div>
-                  <div className="flex-1 flex items-center gap-2">
-                    <input 
-                      type="number"
-                      name="work_minutes"
-                      min={0}
-                      max={59}
-                      defaultValue={0}
-                      className="w-full text-center bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl py-2.5 text-xs transition-all outline-none font-bold"
-                      placeholder="00"
-                    />
-                    <span className="text-xs font-bold text-theme-text-muted">دقيقة</span>
+                <div>
+                  <label className="block text-xs font-bold text-theme-text-muted mb-1">وقت العمل المسجل مسبقاً (اختياري)</label>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 flex items-center gap-1.5">
+                      <input 
+                        type="number"
+                        name="work_hours"
+                        min={0}
+                        max={24}
+                        defaultValue={0}
+                        className="w-full text-center bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl py-2 text-xs transition-all outline-none font-bold"
+                        placeholder="0"
+                      />
+                      <span className="text-[10px] font-bold text-theme-text-muted shrink-0">ساعة</span>
+                    </div>
+                    <div className="flex-1 flex items-center gap-1.5">
+                      <input 
+                        type="number"
+                        name="work_minutes"
+                        min={0}
+                        max={59}
+                        defaultValue={0}
+                        className="w-full text-center bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl py-2 text-xs transition-all outline-none font-bold"
+                        placeholder="00"
+                      />
+                      <span className="text-[10px] font-bold text-theme-text-muted shrink-0">دقيقة</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-theme-text-muted mb-2">اختر لون بوكس المهمة للتمييز:</label>
-                <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                <label className="block text-xs font-bold text-theme-text-muted mb-1.5">اختر لون بوكس المهمة للتمييز:</label>
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
                   {Object.keys(colorClassMap).map((colorKey) => (
                     <label key={colorKey} className="cursor-pointer">
                       <input 
@@ -993,7 +995,7 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
                         defaultChecked={colorKey === 'classic'}
                         className="peer sr-only"
                       />
-                      <div className="peer-checked:ring-2 peer-checked:ring-theme-accent border border-theme-border rounded-xl py-2 px-1 text-center text-[10px] font-bold bg-theme-panel text-theme-text transition-all select-none">
+                      <div className="peer-checked:ring-2 peer-checked:ring-theme-accent border border-theme-border rounded-xl py-1.5 px-0.5 text-center text-[10px] font-bold bg-theme-panel text-theme-text transition-all select-none">
                         {colorKey === 'classic' ? 'أبيض' : 
                          colorKey === 'pastel-red' ? 'وردي' : 
                          colorKey === 'pastel-blue' ? 'سماوي' : 
@@ -1009,7 +1011,7 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
               <div className="pt-2">
                 <button 
                   type="submit" 
-                  className="w-full bg-theme-accent hover:bg-theme-accent-hover text-theme-panel font-bold py-3.5 rounded-xl text-xs transition-colors cursor-pointer"
+                  className="w-full bg-theme-accent hover:bg-theme-accent-hover text-theme-panel font-bold py-3 rounded-xl text-xs transition-all active:scale-95 cursor-pointer shadow-md hover:shadow-lg"
                 >
                   إسناد المهمة للمجموعة
                 </button>
