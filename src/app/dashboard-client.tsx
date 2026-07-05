@@ -287,9 +287,10 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
     const dueDate = formData.get('due_date') as string
     const color = formData.get('color') as string
     const milestoneId = formData.get('milestone_id') as string
+    const workMinutes = parseInt(formData.get('work_minutes') as string) || 0
 
     try {
-      await addTask(title, description, activeGroupId, assignedTo, dueDate, color, milestoneId || undefined)
+      await addTask(title, description, activeGroupId, assignedTo, dueDate, color, milestoneId || undefined, workMinutes)
       showToast('تم إسناد المهمة بنجاح وجاري المتابعة مع الفريق', 'success')
       setIsTaskModalOpen(false)
       form.reset()
@@ -946,6 +947,18 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
                     <option key={m.id} value={m.id}>🎯 {m.title}</option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-theme-text-muted mb-1.5">وقت العمل المسجل مسبقاً (بالدقائق) - اختياري</label>
+                <input 
+                  type="number" 
+                  name="work_minutes" 
+                  min={0}
+                  defaultValue={0}
+                  className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-3 text-xs transition-all outline-none" 
+                  placeholder="مثال: 60"
+                />
               </div>
 
               <div>

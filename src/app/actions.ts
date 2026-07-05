@@ -248,7 +248,8 @@ export async function addTask(
   assignedTo: string,
   dueDate: string,
   color: string,
-  milestoneId?: string | null
+  milestoneId?: string | null,
+  workMinutes?: number
 ) {
   const supabase = await createClient()
   const profile = await getCurrentUserProfile()
@@ -262,7 +263,8 @@ export async function addTask(
     due_date: dueDate,
     color,
     status: 'not_started',
-    milestone_id: milestoneId || null
+    milestone_id: milestoneId || null,
+    work_minutes: workMinutes || 0
   }
 
   const { data, error } = await supabase
