@@ -267,6 +267,41 @@ export async function getMyPendingTasks() {
   }))
 }
 
+// إرسال إشعار لحظي لمستخدم محدد
+async function sendPushToUser(targetUserId: string, title: string, body: string, url: string = '/') {
+  try {
+    const adminSupabase = createAdminClient()
+    const { data: subscriptions } = await adminSupabase
+      .from('push_subscriptions')
+      .select('id, subscription')
+      .eq('user_id', targetUserId)
+
+    if (subscriptions && subscriptions.length > 0) {
+      const payload = JSON.stringify({
+        title,
+        body,
+        url
+      })
+
+      const pushPromises = subscriptions.map(async (subRecord: any) => {
+        try {
+          await webpush.sendNotification(subRecord.subscription, payload)
+        } catch (pushErr: any) {
+          if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
+            await adminSupabase
+              .from('push_subscriptions')
+              .delete()
+              .eq('id', subRecord.id)
+          }
+        }
+      })
+      await Promise.allSettled(pushPromises)
+    }
+  } catch (err) {
+    console.error('Error sending push notification to user:', err)
+  }
+}
+
 // إضافة مهمة جديدة وإسنادها
 export async function addTask(
   title: string,
@@ -301,6 +336,18 @@ export async function addTask(
     .single()
 
   if (error) throw new Error(error.message)
+
+  // إرسال إشعار Push للمسؤول الجديد إذا لم يكن هو الشخص الذي أنشأ المهمة
+  const finalAssigneeId = profile.role === 'admin' ? assignedTo : profile.id
+  if (finalAssigneeId && finalAssigneeId !== profile.id) {
+    sendPushToUser(
+      finalAssigneeId,
+      'مهمة جديدة مسندة إليك ⏱️',
+      `قام ${profile.name} بإسناد مهمة جديدة إليك: ${title}`,
+      `/task/${data.id}`
+    )
+  }
+
   revalidatePath('/')
   revalidatePath('/roadmap')
   return data
@@ -375,6 +422,17 @@ export async function updateTaskDetails(
     .eq('id', taskId)
 
   if (error) throw new Error(error.message)
+
+  // إذا تغير المسؤول عن المهمة وهو ليس الشخص الذي عدلها، نرسل إشعاراً له
+  if (assignedTo && assignedTo !== profile.id) {
+    sendPushToUser(
+      assignedTo,
+      'مهمة مسندة إليك ⏱️',
+      `قام ${profile.name} بإسناد المهمة إليك: ${title}`,
+      `/task/${taskId}`
+    )
+  }
+
   revalidatePath('/')
   revalidatePath('/roadmap')
   return { success: true }

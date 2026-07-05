@@ -304,7 +304,7 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
 
   // تغيير حالة مهمة
   const handleToggleTaskStatus = async (taskId: string, currentStatus: string) => {
-    const nextStatus = currentStatus === 'completed' ? 'pending' : 'completed'
+    const nextStatus = currentStatus === 'completed' ? 'not_started' : 'completed'
     try {
       await updateTaskStatus(taskId, nextStatus)
       if (nextStatus === 'completed') {
