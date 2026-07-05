@@ -17,7 +17,9 @@ import {
   deleteScheduledMeeting,
   getActivePolls,
   getScheduledMeetings,
-  updateScheduledMeeting
+  updateScheduledMeeting,
+  getHeldMeetings,
+  markMeetingAsHeld
 } from '../actions'
 
 interface Profile {
@@ -68,6 +70,8 @@ interface ScheduledMeeting {
   meeting_time: string
   location_url?: string
   notes?: string
+  status?: 'scheduled' | 'held' | 'cancelled'
+  duration_minutes?: number
   created_by?: string
   creator?: {
     name: string
@@ -115,8 +119,8 @@ export default function AvailabilityClient({
   initialScheduledMeetings
 }: AvailabilityClientProps) {
   
-  // التبويبات: جدول توفري الأسبوعي / اجتماعات الفريق
-  const [activeTab, setActiveTab] = useState<'my-availability' | 'team-meetings'>('my-availability')
+  // التبويبات: جدول توفري الأسبوعي / اجتماعات الفريق / سجل اللقاءات المنفذة
+  const [activeTab, setActiveTab] = useState<'my-availability' | 'team-meetings' | 'held-meetings'>('my-availability')
   const isAdmin = currentProfile.role === 'admin'
 
   // البيانات
@@ -175,6 +179,15 @@ export default function AvailabilityClient({
     notes: ''
   })
 
+  // سجل الاجتماعات التاريخية المنفذة
+  const [heldMeetings, setHeldMeetings] = useState<ScheduledMeeting[]>([])
+  const [isConfirmHeldOpen, setIsConfirmHeldOpen] = useState(false)
+  const [confirmHeldMeetingId, setConfirmHeldMeetingId] = useState<string | null>(null)
+  const [confirmHeldTitle, setConfirmHeldTitle] = useState('')
+  const [confirmHeldHours, setConfirmHeldHours] = useState(0)
+  const [confirmHeldMinutes, setConfirmHeldMinutes] = useState(0)
+  const [isSavingHeldConfirm, setIsSavingHeldConfirm] = useState(false)
+
   // خيارات التصويت المختارة لكل تصويت (مفاتيحها pollId)
   const [selectedVotes, setSelectedVotes] = useState<Record<string, string[]>>(() => {
     const votesMap: Record<string, string[]> = {}
@@ -191,7 +204,17 @@ export default function AvailabilityClient({
     return votesMap
   })
 
+  const fetchHeldMeetings = async () => {
+    try {
+      const data = await getHeldMeetings()
+      setHeldMeetings(data)
+    } catch (err: any) {
+      console.error('Error fetching held meetings:', err)
+    }
+  }
+
   useEffect(() => {
+    fetchHeldMeetings()
     const timer = setInterval(() => setCurrentTime(new Date()), 30000)
     return () => clearInterval(timer)
   }, [])
@@ -490,6 +513,40 @@ export default function AvailabilityClient({
     }
   }
 
+  // فتح نافذة تأكيد إقامة الاجتماع
+  const openConfirmHeldModal = (meetingId: string, title: string) => {
+    setConfirmHeldMeetingId(meetingId)
+    setConfirmHeldTitle(title)
+    setConfirmHeldHours(0)
+    setConfirmHeldMinutes(0)
+    setIsConfirmHeldOpen(true)
+  }
+
+  // إرسال تأكيد إقامة الاجتماع
+  const handleConfirmHeldSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!confirmHeldMeetingId) return
+
+    const totalMinutes = (confirmHeldHours * 60) + confirmHeldMinutes
+    setIsSavingHeldConfirm(true)
+    try {
+      await markMeetingAsHeld(confirmHeldMeetingId, totalMinutes)
+      showToast('تم تأكيد إقامة الاجتماع وحفظ مدته بنجاح! 🎉', 'success')
+      
+      // تحديث قوائم الاجتماعات
+      const updatedMeetings = await getScheduledMeetings()
+      setScheduledMeetings(updatedMeetings)
+      fetchHeldMeetings()
+      
+      setIsConfirmHeldOpen(false)
+      setConfirmHeldMeetingId(null)
+    } catch (err: any) {
+      showToast(err.message || 'حدث خطأ أثناء تأكيد إقامة الاجتماع', 'error')
+    } finally {
+      setIsSavingHeldConfirm(false)
+    }
+  }
+
   // تنسيق مؤقت العد التنازلي
   const getCountdownString = (dateStr: string, timeStr: string) => {
     const target = new Date(`${dateStr}T${timeStr}`)
@@ -516,6 +573,23 @@ export default function AvailabilityClient({
     const dayNum = dateObj.getDate()
     const monthName = dateObj.toLocaleDateString('ar-EG', { month: 'short' })
     return `${dayName} (${dayNum} ${monthName})`
+  }
+
+  // تجميع اللقاءات المنفذة حسب الشهر والسنة
+  const getGroupedHeldMeetings = () => {
+    const groups: Record<string, ScheduledMeeting[]> = {}
+    heldMeetings.forEach(meeting => {
+      if (!meeting.meeting_date) return
+      const date = new Date(meeting.meeting_date)
+      const year = date.getFullYear()
+      const monthName = date.toLocaleDateString('ar-EG', { month: 'long' })
+      const key = `${monthName} ${year}`
+      if (!groups[key]) {
+        groups[key] = []
+      }
+      groups[key].push(meeting)
+    })
+    return groups
   }
 
   return (
@@ -561,6 +635,17 @@ export default function AvailabilityClient({
                     {activePolls.length}
                   </span>
                 )}
+              </button>
+              <button 
+                onClick={() => setActiveTab('held-meetings')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${
+                  activeTab === 'held-meetings' 
+                    ? 'bg-theme-accent text-theme-panel shadow-md shadow-theme-accent/15 border-transparent' 
+                    : 'bg-theme-panel hover:bg-theme-bg text-theme-text-muted hover:text-theme-text border-theme-border'
+                }`}
+              >
+                <CalendarDays className="w-3.5 h-3.5" />
+                <span>سجل اللقاءات المنفذة</span>
               </button>
             </div>
           </div>
@@ -743,30 +828,41 @@ export default function AvailabilityClient({
                         </div>
 
                         {/* زر الانضمام أو العنوان */}
-                        <div className="mt-4 pt-3 border-t border-theme-border/50 flex justify-end">
-                          {meeting.meeting_type === 'online' ? (
-                            <a 
-                              href={meeting.location_url || '#'} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="bg-theme-accent hover:bg-theme-accent-hover text-theme-panel font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-theme-accent/15 active:scale-95"
+                        <div className="mt-4 pt-3 border-t border-theme-border/50 flex flex-wrap gap-2 items-center justify-between">
+                          {isAdmin && (
+                            <button
+                              onClick={() => openConfirmHeldModal(meeting.id, meeting.title)}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-xl flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-sm"
                             >
-                              <Video className="w-3.5 h-3.5" />
-                              <span>انضمام إلى Google Meet</span>
-                              <ExternalLink className="w-3 h-3 shrink-0" />
-                            </a>
-                          ) : (
-                            <a 
-                              href={meeting.location_url || '#'} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="bg-amber-500 hover:bg-amber-400 text-neutral-900 font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-amber-500/10 active:scale-95"
-                            >
-                              <MapPin className="w-3.5 h-3.5" />
-                              <span>عرض موقع الكافيه</span>
-                              <ExternalLink className="w-3 h-3 shrink-0" />
-                            </a>
+                              <CheckSquare className="w-3.5 h-3.5" />
+                              <span>تأكيد عقد الاجتماع</span>
+                            </button>
                           )}
+                          <div className="flex-1 flex justify-end">
+                            {meeting.meeting_type === 'online' ? (
+                              <a 
+                                href={meeting.location_url || '#'} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="bg-theme-accent hover:bg-theme-accent-hover text-theme-panel font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-theme-accent/15 active:scale-95"
+                              >
+                                <Video className="w-3.5 h-3.5" />
+                                <span>انضمام إلى Google Meet</span>
+                                <ExternalLink className="w-3 h-3 shrink-0" />
+                              </a>
+                            ) : (
+                              <a 
+                                href={meeting.location_url || '#'} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="bg-amber-500 hover:bg-amber-400 text-neutral-900 font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-amber-500/10 active:scale-95"
+                              >
+                                <MapPin className="w-3.5 h-3.5" />
+                                <span>عرض موقع الكافيه</span>
+                                <ExternalLink className="w-3 h-3 shrink-0" />
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1156,8 +1252,183 @@ export default function AvailabilityClient({
             </div>
           )}
 
+          {activeTab === 'held-meetings' && (
+            <div className="space-y-6 animate-modal-in">
+              <div className="bg-theme-panel border border-theme-border rounded-3xl p-6 shadow-sm text-right space-y-4">
+                <div className="flex items-center justify-between border-b border-theme-border/60 pb-3">
+                  <div>
+                    <h2 className="text-base font-bold text-theme-text flex items-center gap-1.5">
+                      <Award className="w-5 h-5 text-theme-accent" />
+                      <span>سجل اللقاءات والاجتماعات المنفذة</span>
+                    </h2>
+                    <p className="text-[10px] text-theme-text-muted mt-1">
+                      جدول توثيقي لجميع الاجتماعات التي عقدها الفريق ومقدار وقت العمل المنقضي بها.
+                    </p>
+                  </div>
+                </div>
+
+                {heldMeetings.length === 0 ? (
+                  <div className="text-center text-xs text-theme-text-muted py-12">
+                    لا توجد اجتماعات منفذة مسجلة في الأرشيف حالياً.
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {Object.entries(getGroupedHeldMeetings()).map(([monthKey, meetingsList]) => (
+                      <div key={monthKey} className="space-y-3">
+                        <h3 className="text-xs font-black text-theme-accent bg-theme-accent/5 border border-theme-accent/15 px-3 py-1.5 rounded-lg inline-block">
+                          {monthKey}
+                        </h3>
+
+                        <div className="overflow-x-auto rounded-2xl border border-theme-border">
+                          <table className="w-full text-right border-collapse text-xs">
+                            <thead>
+                              <tr className="bg-theme-bg/60 text-theme-text-muted font-bold border-b border-theme-border">
+                                <th className="p-3.5">عنوان الاجتماع</th>
+                                <th className="p-3.5">النوع</th>
+                                <th className="p-3.5">التاريخ والوقت</th>
+                                <th className="p-3.5">مدة الاجتماع</th>
+                                <th className="p-3.5">المنسق</th>
+                                <th className="p-3.5">ملاحظات</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-theme-border/50 text-theme-text">
+                              {meetingsList.map((m) => (
+                                <tr key={m.id} className="hover:bg-theme-bg/30 transition-colors">
+                                  <td className="p-3.5 font-bold">{m.title}</td>
+                                  <td className="p-3.5">
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                                      m.meeting_type === 'online' 
+                                        ? 'bg-theme-accent/10 text-theme-text' 
+                                        : 'bg-amber-500/10 text-amber-500'
+                                    }`}>
+                                      {m.meeting_type === 'online' ? 'أونلاين' : 'حضوري'}
+                                    </span>
+                                  </td>
+                                  <td className="p-3.5 font-medium">
+                                    {getArabicFormattedDate(m.meeting_date)} | {m.meeting_time.slice(0, 5)}
+                                  </td>
+                                  <td className="p-3.5 font-bold text-theme-accent">
+                                    {m.duration_minutes ? (
+                                      <>
+                                        {Math.floor(m.duration_minutes / 60) > 0 && `${Math.floor(m.duration_minutes / 60)}س `}
+                                        {m.duration_minutes % 60}د
+                                      </>
+                                    ) : 'غير محدد'}
+                                  </td>
+                                  <td className="p-3.5">
+                                    <div className="flex items-center gap-1.5">
+                                      <img 
+                                        src={m.creator?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde'} 
+                                        className="w-5 h-5 rounded-full object-cover"
+                                        alt=""
+                                      />
+                                      <span>{m.creator?.name || 'المنسق'}</span>
+                                    </div>
+                                  </td>
+                                  <td className="p-3.5 text-theme-text-muted max-w-xs truncate" title={m.notes || ''}>
+                                    {m.notes || '-'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
         </section>
       </main>
+
+      {/* مودال تأكيد إقامة الاجتماع وتسجيل مدته */}
+      {isConfirmHeldOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-theme-panel border border-theme-border rounded-[2rem] w-full max-w-md p-6 sm:p-8 space-y-6 text-right animate-modal-in shadow-2xl relative">
+            <button 
+              onClick={() => { setIsConfirmHeldOpen(false); setConfirmHeldMeetingId(null); }}
+              className="absolute top-6 left-6 p-2 text-theme-text-muted hover:text-theme-text hover:bg-theme-bg rounded-full transition-all cursor-pointer"
+            >
+              ✕
+            </button>
+
+            <div className="text-center">
+              <h3 className="text-lg font-black text-theme-text mb-2">تأكيد إقامة الاجتماع</h3>
+              <p className="text-xs text-theme-text-muted">
+                هل تم بالفعل عقد الاجتماع: <strong className="text-theme-text">{confirmHeldTitle}</strong>؟
+              </p>
+            </div>
+
+            <form onSubmit={handleConfirmHeldSubmit} className="space-y-6">
+              <div>
+                <label className="block text-xs font-bold text-theme-text-muted text-center mb-4">
+                  كم استغرقت مدة الاجتماع الفعلية؟
+                </label>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <label className="block text-[10px] font-bold text-theme-text-muted mb-2">عدد الساعات</label>
+                    <input 
+                      type="number"
+                      min={0}
+                      max={24}
+                      value={confirmHeldHours}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0
+                        setConfirmHeldHours(Math.min(24, Math.max(0, val)))
+                      }}
+                      className="w-full text-center bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-2xl py-3 text-base font-black outline-none transition-all"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="text-center">
+                    <label className="block text-[10px] font-bold text-theme-text-muted mb-2">عدد الدقائق</label>
+                    <input 
+                      type="number"
+                      min={0}
+                      max={59}
+                      value={confirmHeldMinutes}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0
+                        setConfirmHeldMinutes(Math.min(59, Math.max(0, val)))
+                      }}
+                      className="w-full text-center bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-2xl py-3 text-base font-black outline-none transition-all"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <button
+                  type="submit"
+                  disabled={isSavingHeldConfirm}
+                  className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-extrabold py-3.5 rounded-2xl text-xs transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                >
+                  {isSavingHeldConfirm ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>جاري الحفظ والتأكيد...</span>
+                    </>
+                  ) : (
+                    <span>تأكيد عقد اللقاء وحفظ المدة ⏱️✓</span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setIsConfirmHeldOpen(false); setConfirmHeldMeetingId(null); }}
+                  className="w-full bg-theme-input hover:bg-theme-border text-theme-text font-bold py-3 rounded-2xl text-xs transition-colors cursor-pointer text-center"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* مودال اعتماد وجدولة الاجتماع النهائي */}
       {scheduleModal.isOpen && (

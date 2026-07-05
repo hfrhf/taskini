@@ -1373,7 +1373,7 @@ export async function scheduleMeeting(
   return meeting
 }
 
-// جلب الاجتماعات المجدولة
+// جلب الاجتماعات المجدولة القادمة النشطة
 export async function getScheduledMeetings() {
   const supabase = await createClient()
   const profile = await getCurrentUserProfile()
@@ -1384,12 +1384,51 @@ export async function getScheduledMeetings() {
   const { data, error } = await supabase
     .from('scheduled_meetings')
     .select('*, creator:profiles(name, avatar_url)')
+    .neq('status', 'held')
     .gte('meeting_date', todayStr)
     .order('meeting_date', { ascending: true })
     .order('meeting_time', { ascending: true })
 
   if (error) throw new Error(error.message)
   return data || []
+}
+
+// جلب الاجتماعات التي تمت (التاريخية)
+export async function getHeldMeetings() {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) throw new Error('غير مصرح بالدخول')
+
+  const { data, error } = await supabase
+    .from('scheduled_meetings')
+    .select('*, creator:profiles(name, avatar_url)')
+    .eq('status', 'held')
+    .order('meeting_date', { ascending: false })
+    .order('meeting_time', { ascending: false })
+
+  if (error) throw new Error(error.message)
+  return data || []
+}
+
+// تأكيد إقامة الاجتماع وتسجيل مدته
+export async function markMeetingAsHeld(meetingId: string, durationMinutes: number) {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile || profile.role !== 'admin') throw new Error('صلاحيات غير كافية')
+
+  const { data, error } = await supabase
+    .from('scheduled_meetings')
+    .update({
+      status: 'held',
+      duration_minutes: durationMinutes
+    })
+    .eq('id', meetingId)
+    .select()
+    .single()
+
+  if (error) throw new Error(error.message)
+  revalidatePath('/availability')
+  return data
 }
 
 // حذف أو إلغاء اجتماع (Admin Only)

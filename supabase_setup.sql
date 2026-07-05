@@ -4,6 +4,10 @@
 --
 -- لتحديث جدول المهام الحالي وإضافة عمود وقت العمل بالدقائق:
 -- ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS work_minutes integer NOT NULL DEFAULT 0;
+--
+-- لتحديث جدول الاجتماعات المجدولة وإضافة أعمدة الحالة والمدة:
+-- ALTER TABLE public.scheduled_meetings ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'held', 'cancelled'));
+-- ALTER TABLE public.scheduled_meetings ADD COLUMN IF NOT EXISTS duration_minutes integer NOT NULL DEFAULT 0;
 -- ==========================================
 
 -- 1. إنشاء جدول ملفات التعريف للمستخدمين (Profiles)
@@ -391,6 +395,8 @@ create table if not exists public.scheduled_meetings (
   meeting_time time not null,
   location_url text,
   notes text,
+  status text not null default 'scheduled' check (status in ('scheduled', 'held', 'cancelled')),
+  duration_minutes integer not null default 0,
   created_by uuid references public.profiles(id) on delete set null,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
