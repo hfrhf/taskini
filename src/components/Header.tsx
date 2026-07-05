@@ -437,7 +437,7 @@ export default function Header({ user }: HeaderProps) {
               {isNotificationsOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setIsNotificationsOpen(false)}></div>
-                  <div className="absolute left-0 right-auto rtl:right-0 rtl:left-auto mt-2 w-72 bg-theme-panel border border-theme-border rounded-2xl shadow-xl py-3 z-50 animate-modal-in text-right">
+                  <div className="fixed sm:absolute top-24 sm:top-auto left-4 right-4 sm:left-auto sm:right-0 sm:rtl:left-0 sm:rtl:right-auto mt-2 w-auto sm:w-80 bg-theme-panel border border-theme-border rounded-2xl shadow-xl py-3 z-50 animate-modal-in text-right">
                     <div className="px-4 pb-2 border-b border-theme-border/50 flex items-center justify-between">
                       <span className="text-xs font-black text-theme-text">الإشعارات</span>
                       <span className="text-[10px] font-bold text-theme-text-muted bg-theme-bg px-2 py-0.5 rounded-full">
