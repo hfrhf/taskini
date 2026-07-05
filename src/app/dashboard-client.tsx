@@ -297,12 +297,9 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
     const dueDate = formData.get('due_date') as string
     const color = formData.get('color') as string
     const milestoneId = formData.get('milestone_id') as string
-    const workHours = parseInt(formData.get('work_hours') as string) || 0
-    const workMinutes = parseInt(formData.get('work_minutes') as string) || 0
-    const totalMinutes = (workHours * 60) + workMinutes
 
     try {
-      await addTask(title, description, activeGroupId, assignedTo, dueDate, color, milestoneId || undefined, totalMinutes)
+      await addTask(title, description, activeGroupId, assignedTo, dueDate, color, milestoneId || undefined, 0)
       showToast('تم إسناد المهمة بنجاح وجاري المتابعة مع الفريق', 'success')
       setIsTaskModalOpen(false)
       form.reset()
@@ -1006,36 +1003,6 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
                     <option key={m.id} value={m.id}>🎯 {m.title}</option>
                   ))}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-theme-text-muted mb-1.5">وقت العمل المسجل مسبقاً (اختياري)</label>
-                <div className="flex items-center gap-4 bg-theme-bg/30 border border-theme-border/60 rounded-xl p-3.5">
-                  <div className="flex-1 flex items-center gap-2">
-                    <input 
-                      type="number"
-                      name="work_hours"
-                      min={0}
-                      max={24}
-                      defaultValue={0}
-                      className="w-full text-center bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl py-2.5 text-xs transition-all outline-none font-bold"
-                      placeholder="0"
-                    />
-                    <span className="text-xs font-bold text-theme-text-muted shrink-0">ساعة</span>
-                  </div>
-                  <div className="flex-1 flex items-center gap-2">
-                    <input 
-                      type="number"
-                      name="work_minutes"
-                      min={0}
-                      max={59}
-                      defaultValue={0}
-                      className="w-full text-center bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl py-2.5 text-xs transition-all outline-none font-bold"
-                      placeholder="00"
-                    />
-                    <span className="text-xs font-bold text-theme-text-muted shrink-0">دقيقة</span>
-                  </div>
-                </div>
               </div>
 
               <div>
