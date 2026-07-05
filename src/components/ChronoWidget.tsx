@@ -181,161 +181,156 @@ export default function ChronoWidget() {
   const circumference = 2 * Math.PI * radius
   const strokeDashoffset = circumference - ((time % 60) / 60) * circumference
 
-  if (displayMode === 'closed') {
-    return (
-      <div className="fixed bottom-24 left-4 md:bottom-6 md:left-6 z-50 animate-modal-in">
-        <button
-          onClick={() => changeDisplayMode('open')}
-          className="w-12 h-12 rounded-full bg-theme-panel hover:bg-theme-bg text-theme-text-muted hover:text-theme-text border border-theme-border shadow-2xl flex items-center justify-center cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 group relative"
-          title="مؤقت العمل المساعد"
-        >
-          <Timer className="w-5.5 h-5.5 text-theme-accent group-hover:rotate-12 transition-transform" />
-          {time > 0 && (
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-theme-accent rounded-full animate-ping" />
-          )}
-        </button>
-      </div>
-    )
-  }
-
-  if (displayMode === 'minimized') {
-    return (
-      <div className="fixed bottom-24 left-4 md:bottom-6 md:left-6 z-50 animate-modal-in">
-        <div
-          onClick={() => changeDisplayMode('open')}
-          className="flex items-center gap-2 bg-theme-accent text-theme-panel font-mono font-bold text-[11px] py-2 px-3.5 rounded-full shadow-2xl cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200 border border-theme-accent-hover/30"
-          title="توسيع عداد العمل"
-        >
-          <Timer className="w-4 h-4 animate-pulse shrink-0" />
-          <span>{formatCompactTime(time)}</span>
-          {isRunning && (
-            <span className="w-1.5 h-1.5 rounded-full bg-theme-panel animate-ping shrink-0" />
-          )}
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="fixed bottom-24 left-4 md:bottom-6 md:left-6 z-50 w-64 bg-theme-panel/90 backdrop-blur-md border border-theme-border rounded-3xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.3)] text-right animate-modal-in select-none">
-      
-      {/* الترويسة وأزرار التحكم بالوضع */}
-      <div className="flex items-center justify-between gap-4 border-b border-theme-border/50 pb-2 mb-4">
-        <span className="text-[10px] font-bold text-theme-text-muted flex items-center gap-1">
-          <Timer className="w-3.5 h-3.5 text-theme-accent" />
-          <span>عداد ساعات العمل</span>
-        </span>
-        
-        <div className="flex items-center gap-1">
+    <>
+      {displayMode === 'closed' ? (
+        <div className="fixed bottom-24 left-4 md:bottom-6 md:left-6 z-50 animate-modal-in">
           <button
-            onClick={() => changeDisplayMode('minimized')}
-            className="p-1 hover:bg-theme-bg rounded-lg text-theme-text-muted hover:text-theme-text transition-colors cursor-pointer"
-            title="تصغير"
+            onClick={() => changeDisplayMode('open')}
+            className="w-12 h-12 rounded-full bg-theme-panel hover:bg-theme-bg text-theme-text-muted hover:text-theme-text border border-theme-border shadow-2xl flex items-center justify-center cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 group relative"
+            title="مؤقت العمل المساعد"
           >
-            <Minimize2 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => changeDisplayMode('closed')}
-            className="p-1 hover:bg-theme-bg rounded-lg text-theme-text-muted hover:text-rose-500 transition-colors cursor-pointer"
-            title="إغلاق تماماً"
-          >
-            <X className="w-3.5 h-3.5" />
+            <Timer className="w-5.5 h-5.5 text-theme-accent group-hover:rotate-12 transition-transform" />
+            {time > 0 && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-theme-accent rounded-full animate-ping" />
+            )}
           </button>
         </div>
-      </div>
-
-      {/* حلقة المؤقت الدائرية الفخمة */}
-      <div className="relative w-36 h-36 mx-auto flex items-center justify-center my-4">
-        <svg className="w-full h-full transform -rotate-90">
-          {/* حلقة الخلفية الباهتة */}
-          <circle
-            cx="72"
-            cy="72"
-            r={radius}
-            fill="transparent"
-            stroke="var(--theme-border)"
-            strokeWidth="4"
-            className="opacity-40"
-          />
-          {/* حلقة التقدم النشطة */}
-          <circle
-            cx="72"
-            cy="72"
-            r={radius}
-            fill="transparent"
-            stroke="var(--theme-accent)"
-            strokeWidth="4"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            className="transition-all duration-300"
-            style={{
-              filter: isRunning ? 'drop-shadow(0 0 2px var(--theme-accent))' : 'none'
-            }}
-          />
-        </svg>
-        
-        {/* الوقت المكتوب في المنتصف */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="font-mono text-lg font-black text-theme-text tracking-tight">
-            {formatTime(time)}
-          </span>
-          <span className="text-[9px] font-bold text-theme-text-muted mt-0.5">
-            {isRunning ? 'جاري الحساب...' : 'متوقف مؤقتاً'}
-          </span>
+      ) : displayMode === 'minimized' ? (
+        <div className="fixed bottom-24 left-4 md:bottom-6 md:left-6 z-50 animate-modal-in">
+          <div
+            onClick={() => changeDisplayMode('open')}
+            className="flex items-center gap-2 bg-theme-accent text-theme-panel font-mono font-bold text-[11px] py-2 px-3.5 rounded-full shadow-2xl cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200 border border-theme-accent-hover/30"
+            title="توسيع عداد العمل"
+          >
+            <Timer className="w-4 h-4 animate-pulse shrink-0" />
+            <span>{formatCompactTime(time)}</span>
+            {isRunning && (
+              <span className="w-1.5 h-1.5 rounded-full bg-theme-panel animate-ping shrink-0" />
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="fixed bottom-24 left-4 md:bottom-6 md:left-6 z-50 w-64 bg-theme-panel/90 backdrop-blur-md border border-theme-border rounded-3xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.3)] text-right animate-modal-in select-none">
+          {/* الترويسة وأزرار التحكم بالوضع */}
+          <div className="flex items-center justify-between gap-4 border-b border-theme-border/50 pb-2 mb-4">
+            <span className="text-[10px] font-bold text-theme-text-muted flex items-center gap-1">
+              <Timer className="w-3.5 h-3.5 text-theme-accent" />
+              <span>عداد ساعات العمل</span>
+            </span>
+            
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => changeDisplayMode('minimized')}
+                className="p-1 hover:bg-theme-bg rounded-lg text-theme-text-muted hover:text-theme-text transition-colors cursor-pointer"
+                title="تصغير"
+              >
+                <Minimize2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => changeDisplayMode('closed')}
+                className="p-1 hover:bg-theme-bg rounded-lg text-theme-text-muted hover:text-rose-500 transition-colors cursor-pointer"
+                title="إغلاق تماماً"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
 
-      {/* أزرار التحكم بالعداد */}
-      <div className="flex items-center justify-center gap-3 pt-2">
-        <button
-          onClick={handleReset}
-          className="flex-1 bg-theme-bg hover:bg-theme-border border border-theme-border text-theme-text-muted hover:text-theme-text font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
-          title="إعادة تعيين العداد"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span>تصفير</span>
-        </button>
+          {/* حلقة المؤقت الدائرية الفخمة */}
+          <div className="relative w-36 h-36 mx-auto flex items-center justify-center my-4">
+            <svg className="w-full h-full transform -rotate-90">
+              {/* حلقة الخلفية الباهتة */}
+              <circle
+                cx="72"
+                cy="72"
+                r={radius}
+                fill="transparent"
+                stroke="var(--theme-border)"
+                strokeWidth="4"
+                className="opacity-40"
+              />
+              {/* حلقة التقدم النشطة */}
+              <circle
+                cx="72"
+                cy="72"
+                r={radius}
+                fill="transparent"
+                stroke="var(--theme-accent)"
+                strokeWidth="4"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                className="transition-all duration-300"
+                style={{
+                  filter: isRunning ? 'drop-shadow(0 0 2px var(--theme-accent))' : 'none'
+                }}
+              />
+            </svg>
+            
+            {/* الوقت المكتوب في المنتصف */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+              <span className="font-mono text-lg font-black text-theme-text tracking-tight">
+                {formatTime(time)}
+              </span>
+              <span className="text-[9px] font-bold text-theme-text-muted mt-0.5">
+                {isRunning ? 'جاري الحساب...' : 'متوقف مؤقتاً'}
+              </span>
+            </div>
+          </div>
 
-        {isRunning ? (
-          <button
-            onClick={handlePause}
-            className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-lg shadow-amber-500/10"
-            title="إيقاف مؤقت"
-          >
-            <Pause className="w-3.5 h-3.5" />
-            <span>إيقاف</span>
-          </button>
-        ) : (
-          <button
-            onClick={handleStart}
-            className="flex-1 bg-theme-accent hover:bg-theme-accent-hover text-theme-panel font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-lg shadow-theme-accent/15"
-            title="بدء الحساب"
-          >
-            <Play className="w-3.5 h-3.5" />
-            <span>بدء</span>
-          </button>
-        )}
-      </div>
+          {/* أزرار التحكم بالعداد */}
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button
+              onClick={handleReset}
+              className="flex-1 bg-theme-bg hover:bg-theme-border border border-theme-border text-theme-text-muted hover:text-theme-text font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+              title="إعادة تعيين العداد"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>تصفير</span>
+            </button>
 
-      {time > 0 && (
-        <div className="pt-3 border-t border-theme-border/50 mt-3">
-          <button
-            onClick={openConvertModal}
-            className="w-full bg-theme-accent hover:bg-theme-accent-hover text-theme-panel font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-lg shadow-theme-accent/15"
-            title="تحويل الوقت المسجل"
-          >
-            <Clock className="w-3.5 h-3.5" />
-            <span>تحويل الوقت كـ...</span>
-          </button>
+            {isRunning ? (
+              <button
+                onClick={handlePause}
+                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-lg shadow-amber-500/10"
+                title="إيقاف مؤقت"
+              >
+                <Pause className="w-3.5 h-3.5" />
+                <span>إيقاف</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleStart}
+                className="flex-1 bg-theme-accent hover:bg-theme-accent-hover text-theme-panel font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-lg shadow-theme-accent/15"
+                title="بدء الحساب"
+              >
+                <Play className="w-3.5 h-3.5" />
+                <span>بدء</span>
+              </button>
+            )}
+          </div>
+
+          {time > 0 && (
+            <div className="pt-3 border-t border-theme-border/50 mt-3">
+              <button
+                onClick={openConvertModal}
+                className="w-full bg-theme-accent hover:bg-theme-accent-hover text-theme-panel font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-lg shadow-theme-accent/15"
+                title="تحويل الوقت المسجل"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>تحويل الوقت كـ...</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       {/* ================== نافذة تحويل الوقت (Modal) ================== */}
       {isConvertModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center" role="dialog">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-xs" onClick={() => setIsConvertModalOpen(false)}></div>
-          <div className="relative bg-theme-panel w-full max-w-sm mx-4 rounded-3xl p-6 shadow-2xl border border-theme-border animate-modal-in z-10 text-right">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-fade-in" role="dialog">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity" onClick={() => setIsConvertModalOpen(false)}></div>
+          <div className="relative bg-theme-panel w-full max-w-sm rounded-3xl p-6 shadow-[0_25px_60px_rgba(0,0,0,0.4)] border border-theme-border animate-modal-in z-10 text-right max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div className="flex items-start justify-between gap-4 mb-5 border-b border-theme-border/50 pb-2">
               <div>
                 <h3 className="text-sm font-black text-theme-text">تحويل وقت العداد</h3>
@@ -366,29 +361,29 @@ export default function ChronoWidget() {
               {/* اختيار نوع التحويل */}
               <div className="space-y-2">
                 <label className="block text-[11px] font-bold text-theme-text-muted">اختر مكان التسجيل:</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2.5">
                   <button
                     type="button"
                     onClick={() => setConvertType('standup')}
-                    className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-bold transition-all duration-205 cursor-pointer ${
+                    className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border text-xs font-bold transition-all duration-205 cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
                       convertType === 'standup'
                         ? 'bg-theme-accent text-theme-panel border-theme-accent shadow-sm'
                         : 'bg-theme-bg border-theme-border text-theme-text hover:border-theme-border/80'
                     }`}
                   >
-                    <Calendar className="w-4 h-4 mb-1" />
+                    <Calendar className="w-5 h-5 mb-1.5" />
                     <span>لقاء اليوميات</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setConvertType('task')}
-                    className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-bold transition-all duration-205 cursor-pointer ${
+                    className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border text-xs font-bold transition-all duration-205 cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
                       convertType === 'task'
                         ? 'bg-theme-accent text-theme-panel border-theme-accent shadow-sm'
                         : 'bg-theme-bg border-theme-border text-theme-text hover:border-theme-border/80'
                     }`}
                   >
-                    <CheckSquare className="w-4 h-4 mb-1" />
+                    <CheckSquare className="w-5 h-5 mb-1.5" />
                     <span>مهمة محددة</span>
                   </button>
                 </div>
@@ -411,7 +406,7 @@ export default function ChronoWidget() {
                     <select
                       value={selectedTaskId}
                       onChange={(e) => setSelectedTaskId(e.target.value)}
-                      className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-3 py-2.5 text-xs transition-all outline-none cursor-pointer font-bold"
+                      className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-2xl px-4 py-3 text-xs transition-all outline-none cursor-pointer font-bold shadow-inner"
                     >
                       {activeTasks.map((t) => (
                         <option key={t.id} value={t.id}>
@@ -424,12 +419,12 @@ export default function ChronoWidget() {
               )}
 
               {/* أزرار الحفظ والإغلاق */}
-              <div className="flex gap-2 pt-2">
+              <div className="flex flex-col sm:flex-row gap-2 pt-2">
                 <button
                   type="button"
                   onClick={handleConvertConfirm}
                   disabled={isSaving || (convertType === 'task' && activeTasks.length === 0)}
-                  className="flex-grow bg-theme-accent hover:bg-theme-accent-hover disabled:bg-neutral-300 disabled:text-theme-text-muted text-theme-panel font-bold py-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="flex-grow order-1 sm:order-2 bg-theme-accent hover:bg-theme-accent-hover disabled:bg-neutral-300 disabled:text-theme-text-muted text-theme-panel font-bold py-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-md hover:shadow-lg active:scale-95"
                 >
                   {isSaving ? (
                     <>
@@ -443,7 +438,7 @@ export default function ChronoWidget() {
                 <button
                   type="button"
                   onClick={() => setIsConvertModalOpen(false)}
-                  className="px-4 bg-theme-bg hover:bg-theme-border border border-theme-border text-theme-text font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                  className="order-2 sm:order-1 px-4 bg-theme-bg hover:bg-theme-border border border-theme-border text-theme-text font-bold py-3 rounded-xl text-xs transition-colors cursor-pointer active:scale-95 text-center"
                 >
                   إلغاء
                 </button>
@@ -460,7 +455,6 @@ export default function ChronoWidget() {
           onClose={() => setToast(null)} 
         />
       )}
-
-    </div>
+    </>
   )
 }
