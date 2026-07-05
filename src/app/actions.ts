@@ -322,7 +322,8 @@ export async function updateTaskDetails(
   milestoneId?: string | null,
   assignedTo?: string | null,
   dueDate?: string | null,
-  color?: string | null
+  color?: string | null,
+  workMinutes?: number
 ) {
   const supabase = await createClient()
   const profile = await getCurrentUserProfile()
@@ -337,6 +338,7 @@ export async function updateTaskDetails(
   if (assignedTo !== undefined) updateData.assigned_to = assignedTo || null
   if (dueDate !== undefined) updateData.due_date = dueDate
   if (color !== undefined) updateData.color = color
+  if (workMinutes !== undefined) updateData.work_minutes = workMinutes
 
   const { error } = await supabase
     .from('tasks')
@@ -1842,6 +1844,111 @@ export async function deleteIdea(ideaId: string) {
 
   revalidatePath('/ideas')
   return { success: true }
+}
+
+// جلب المهام النشطة للمستخدم الحالي
+export async function getUserActiveTasks() {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) return []
+
+  const { data, error } = await supabase
+    .from('tasks')
+    .select(`
+      id,
+      title,
+      due_date,
+      status,
+      group:task_groups(name)
+    `)
+    .eq('assigned_to', profile.id)
+    .neq('status', 'completed')
+    .order('due_date', { ascending: true })
+
+  if (error) throw new Error(error.message)
+  return data || []
+}
+
+// تسجيل وقت العمل على مهمة معينة (زيادة الوقت الحالي)
+export async function logTaskTime(taskId: string, minutes: number) {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) throw new Error('غير مصرح بالدخول')
+
+  const { data: task, error: fetchError } = await supabase
+    .from('tasks')
+    .select('work_minutes, assigned_to')
+    .eq('id', taskId)
+    .single()
+
+  if (fetchError || !task) throw new Error('المهمة غير موجودة')
+  if (profile.role !== 'admin' && task.assigned_to !== profile.id) {
+    throw new Error('ليست لديك الصلاحية لتسجيل الوقت لهذه المهمة')
+  }
+
+  const newMinutes = (task.work_minutes || 0) + minutes
+
+  const { data, error } = await supabase
+    .from('tasks')
+    .update({ work_minutes: newMinutes })
+    .eq('id', taskId)
+    .select()
+    .single()
+
+  if (error) throw new Error(error.message)
+  revalidatePath('/')
+  revalidatePath(`/task/${taskId}`)
+  return data
+}
+
+// تسجيل وقت العمل في اللقاء اليومي للتاريخ المحدد
+export async function logStandupTime(dateString: string, minutes: number) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('غير مصرح بالدخول')
+
+  // التحقق من وجود تقرير اليوم
+  const { data: standup, error: fetchError } = await supabase
+    .from('daily_standups')
+    .select('id, work_minutes')
+    .eq('user_id', user.id)
+    .eq('date', dateString)
+    .maybeSingle()
+
+  if (standup) {
+    const newMinutes = (standup.work_minutes || 0) + minutes
+    const { data, error } = await supabase
+      .from('daily_standups')
+      .update({ work_minutes: newMinutes })
+      .eq('id', standup.id)
+      .select()
+      .single()
+
+    if (error) throw new Error(error.message)
+    revalidatePath('/standup')
+    return { success: true, updated: true, data }
+  } else {
+    // إنشاء تقرير مبدئي
+    const { data, error } = await supabase
+      .from('daily_standups')
+      .insert({
+        user_id: user.id,
+        date: dateString,
+        today_tasks: 'تسجيل وقت العمل من العداد التلقائي',
+        tomorrow_tasks: 'تحديث لاحق لجدول الأعمال',
+        mood: 'stable',
+        progress_rate: 'most',
+        productivity_score: 4,
+        work_minutes: minutes,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single()
+
+    if (error) throw new Error(error.message)
+    revalidatePath('/standup')
+    return { success: true, created: true, data }
+  }
 }
 
 

@@ -125,6 +125,7 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
     const title = formData.get('title') as string
     const description = formData.get('description') as string
     const assignedTo = formData.get('assigned_to') as string
+    const workMinutes = parseInt(formData.get('work_minutes') as string) || 0
 
     try {
       setIsSavingDetails(true)
@@ -135,7 +136,8 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
         taskMilestoneId || null,
         assignedTo || null,
         taskDueDate,
-        taskColor
+        taskColor,
+        workMinutes
       )
 
       // البحث عن المسؤول في قائمة الفريق لتحديث الاسم والصورة بالواجهة
@@ -152,7 +154,8 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
         assigned_to: assignedTo || null,
         assignee: selectedAssignee ? { name: selectedAssignee.name, email: selectedAssignee.email, avatar_url: selectedAssignee.avatar_url } : null,
         due_date: taskDueDate,
-        color: taskColor
+        color: taskColor,
+        work_minutes: workMinutes
       })
 
       showToast('تم حفظ التعديلات بنجاح', 'success')
@@ -257,6 +260,11 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
                 {task.milestone && (
                   <span className="inline-block text-[10px] text-theme-accent bg-theme-accent/10 px-2.5 py-0.5 rounded-md mt-2 font-bold">
                     🎯 المحطة الكبرى: {task.milestone.title}
+                  </span>
+                )}
+                {task.work_minutes > 0 && (
+                  <span className="inline-block text-[10px] text-theme-accent bg-theme-accent/10 px-2.5 py-0.5 rounded-md mt-2 mr-2 font-bold">
+                    ⏱️ مدة العمل: {Math.floor(task.work_minutes / 60)}س {task.work_minutes % 60}د
                   </span>
                 )}
               </div>
@@ -437,6 +445,18 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
                     direction="up"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-theme-text-muted mb-1.5">وقت العمل المسجل (بالدقائق)</label>
+                <input 
+                  type="number" 
+                  name="work_minutes" 
+                  min={0}
+                  defaultValue={task.work_minutes || 0}
+                  className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-3 text-xs transition-all outline-none" 
+                  placeholder="مثال: 60"
+                />
               </div>
 
               <div>

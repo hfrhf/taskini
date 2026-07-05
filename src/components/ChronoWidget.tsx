@@ -2,13 +2,67 @@
 
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { Play, Pause, RotateCcw, X, Minimize2, Maximize2, Timer } from 'lucide-react'
+import { Play, Pause, RotateCcw, X, Minimize2, Maximize2, Timer, Calendar, CheckSquare, Clock, Loader2 } from 'lucide-react'
+import { getUserActiveTasks, logTaskTime, logStandupTime } from '../app/actions'
+import Toast from './Toast'
 
 export default function ChronoWidget() {
   const pathname = usePathname()
   const [displayMode, setDisplayMode] = useState<'closed' | 'open' | 'minimized'>('closed')
   const [time, setTime] = useState<number>(0)
   const [isRunning, setIsRunning] = useState<boolean>(false)
+
+  // حالات تحويل الوقت
+  const [isConvertModalOpen, setIsConvertModalOpen] = useState(false)
+  const [activeTasks, setActiveTasks] = useState<any[]>([])
+  const [selectedTaskId, setSelectedTaskId] = useState<string>('')
+  const [convertType, setConvertType] = useState<'standup' | 'task'>('standup')
+  const [isSaving, setIsSaving] = useState(false)
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null)
+
+  const openConvertModal = async () => {
+    setIsConvertModalOpen(true)
+    setIsLoadingTasks(true)
+    try {
+      const tasks = await getUserActiveTasks()
+      setActiveTasks(tasks)
+      if (tasks.length > 0) {
+        setSelectedTaskId(tasks[0].id)
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsLoadingTasks(false)
+    }
+  }
+
+  const elapsedMinutes = Math.max(1, Math.round(time / 60))
+
+  const handleConvertConfirm = async () => {
+    setIsSaving(true)
+    try {
+      if (convertType === 'standup') {
+        const todayStr = new Date().toISOString().split('T')[0]
+        await logStandupTime(todayStr, elapsedMinutes)
+        setToast({ message: `تم تسجيل ${elapsedMinutes} دقيقة في اللقاء اليومي بنجاح!`, type: 'success' })
+      } else {
+        if (!selectedTaskId) {
+          setToast({ message: 'يرجى اختيار المهمة أولاً', type: 'warning' })
+          setIsSaving(false)
+          return
+        }
+        await logTaskTime(selectedTaskId, elapsedMinutes)
+        setToast({ message: `تم تسجيل ${elapsedMinutes} دقيقة للمهمة بنجاح!`, type: 'success' })
+      }
+      setIsConvertModalOpen(false)
+      handleReset() // تصفير العداد عند الحفظ بنجاح
+    } catch (error: any) {
+      setToast({ message: 'فشل حفظ الوقت: ' + error.message, type: 'error' })
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   // إخفاء العداد في صفحة تسجيل الدخول
   if (pathname === '/login') return null
@@ -263,6 +317,149 @@ export default function ChronoWidget() {
           </button>
         )}
       </div>
+
+      {time > 0 && (
+        <div className="pt-3 border-t border-theme-border/50 mt-3">
+          <button
+            onClick={openConvertModal}
+            className="w-full bg-theme-accent hover:bg-theme-accent-hover text-theme-panel font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-lg shadow-theme-accent/15"
+            title="تحويل الوقت المسجل"
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>تحويل الوقت كـ...</span>
+          </button>
+        </div>
+      )}
+
+      {/* ================== نافذة تحويل الوقت (Modal) ================== */}
+      {isConvertModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center" role="dialog">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-xs" onClick={() => setIsConvertModalOpen(false)}></div>
+          <div className="relative bg-theme-panel w-full max-w-sm mx-4 rounded-3xl p-6 shadow-2xl border border-theme-border animate-modal-in z-10 text-right">
+            <div className="flex items-start justify-between gap-4 mb-5 border-b border-theme-border/50 pb-2">
+              <div>
+                <h3 className="text-sm font-black text-theme-text">تحويل وقت العداد</h3>
+                <p className="text-[10px] text-theme-text-muted mt-0.5">تسجيل الوقت المستغرق في إنجاز أعمالك</p>
+              </div>
+              <button 
+                onClick={() => setIsConvertModalOpen(false)}
+                className="p-1 text-theme-text-muted hover:text-theme-text hover:bg-theme-bg rounded-xl transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* عرض الوقت المستغرق */}
+              <div className="bg-theme-bg/60 border border-theme-border rounded-2xl p-3 text-center">
+                <span className="text-[10px] text-theme-text-muted font-bold block mb-1">وقت العداد المترجم</span>
+                <span className="font-mono text-base font-black text-theme-accent">
+                  {elapsedMinutes} دقيقة
+                </span>
+                {elapsedMinutes >= 60 && (
+                  <span className="text-xs text-theme-text-muted block mt-1">
+                    ({Math.floor(elapsedMinutes / 60)} ساعة و {elapsedMinutes % 60} دقيقة)
+                  </span>
+                )}
+              </div>
+
+              {/* اختيار نوع التحويل */}
+              <div className="space-y-2">
+                <label className="block text-[11px] font-bold text-theme-text-muted">اختر مكان التسجيل:</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setConvertType('standup')}
+                    className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-bold transition-all duration-205 cursor-pointer ${
+                      convertType === 'standup'
+                        ? 'bg-theme-accent text-theme-panel border-theme-accent shadow-sm'
+                        : 'bg-theme-bg border-theme-border text-theme-text hover:border-theme-border/80'
+                    }`}
+                  >
+                    <Calendar className="w-4 h-4 mb-1" />
+                    <span>لقاء اليوميات</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConvertType('task')}
+                    className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-bold transition-all duration-205 cursor-pointer ${
+                      convertType === 'task'
+                        ? 'bg-theme-accent text-theme-panel border-theme-accent shadow-sm'
+                        : 'bg-theme-bg border-theme-border text-theme-text hover:border-theme-border/80'
+                    }`}
+                  >
+                    <CheckSquare className="w-4 h-4 mb-1" />
+                    <span>مهمة محددة</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* اختيار المهمة في حال كان نوع التحويل مهمة */}
+              {convertType === 'task' && (
+                <div className="space-y-1.5 animate-modal-in">
+                  <label className="block text-[11px] font-bold text-theme-text-muted">اختر المهمة النشطة:</label>
+                  {isLoadingTasks ? (
+                    <div className="flex items-center justify-center p-3 text-xs text-theme-text-muted">
+                      <Loader2 className="w-4 h-4 animate-spin text-theme-accent ml-2" />
+                      <span>جاري تحميل مهامك...</span>
+                    </div>
+                  ) : activeTasks.length === 0 ? (
+                    <p className="text-[10px] text-rose-500 bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 text-center font-bold">
+                      لا توجد مهام نشطة مسندة إليك حالياً.
+                    </p>
+                  ) : (
+                    <select
+                      value={selectedTaskId}
+                      onChange={(e) => setSelectedTaskId(e.target.value)}
+                      className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-3 py-2.5 text-xs transition-all outline-none cursor-pointer font-bold"
+                    >
+                      {activeTasks.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.title} ({t.group?.name || 'عام'})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+
+              {/* أزرار الحفظ والإغلاق */}
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={handleConvertConfirm}
+                  disabled={isSaving || (convertType === 'task' && activeTasks.length === 0)}
+                  className="flex-grow bg-theme-accent hover:bg-theme-accent-hover disabled:bg-neutral-300 disabled:text-theme-text-muted text-theme-panel font-bold py-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>جاري التسجيل...</span>
+                    </>
+                  ) : (
+                    <span>تأكيد وتسجيل الوقت</span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsConvertModalOpen(false)}
+                  className="px-4 bg-theme-bg hover:bg-theme-border border border-theme-border text-theme-text font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
 
     </div>
   )

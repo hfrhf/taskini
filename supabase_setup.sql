@@ -1,6 +1,9 @@
 -- ==========================================
 -- ملف تهيئة قاعدة بيانات مشروع Taskini في Supabase
 -- قم بنسخ هذا الكود بالكامل ولصقه في قسم SQL Editor في لوحة تحكم Supabase ثم اضغط Run
+--
+-- لتحديث جدول المهام الحالي وإضافة عمود وقت العمل بالدقائق:
+-- ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS work_minutes integer NOT NULL DEFAULT 0;
 -- ==========================================
 
 -- 1. إنشاء جدول ملفات التعريف للمستخدمين (Profiles)
@@ -106,6 +109,7 @@ create table if not exists public.tasks (
   due_date date not null,
   completed_date date,
   migrated_from_date date,
+  work_minutes integer not null default 0, -- وقت العمل بالدقائق على المهمة
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

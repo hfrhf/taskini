@@ -741,9 +741,16 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
                       </div>
 
                       <div className="mt-4 pt-3 border-t border-theme-border flex items-center justify-between text-[10px] text-theme-text-muted">
-                        <div className="flex items-center gap-1">
-                          <span className="font-semibold text-theme-text">المسؤول:</span>
-                          <span>{task.assignee ? task.assignee.name : 'غير محدد'}</span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-1">
+                            <span className="font-semibold text-theme-text">المسؤول:</span>
+                            <span>{task.assignee ? task.assignee.name : 'غير محدد'}</span>
+                          </div>
+                          {task.work_minutes > 0 && (
+                            <span className="text-theme-accent font-bold flex items-center gap-1 bg-theme-accent/10 px-2 py-0.5 rounded-lg border border-theme-accent/20">
+                              ⏱️ {Math.floor(task.work_minutes / 60)}س {task.work_minutes % 60}د
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <span>الموعد: {task.due_date}</span>
