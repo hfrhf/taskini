@@ -237,6 +237,18 @@ export default function StandupClient({ currentProfile, teamProfiles, initialMil
 
       // البحث عن تقرير المستخدم الحالي لتعبئة النموذج تلقائياً
       const myStandup = (data as Standup[]).find(s => s.user_id === currentProfile.id)
+      
+      // التحقق من وجود دقائق معلقة قادمة من العداد
+      let additionalMinutes = 0
+      try {
+        const pending = localStorage.getItem('pending_chrono_minutes')
+        if (pending) {
+          additionalMinutes = parseInt(pending, 10)
+          setIsFormVisible(true)
+          localStorage.removeItem('pending_chrono_minutes')
+        }
+      } catch (e) {}
+
       if (myStandup) {
         setTodayTasks(myStandup.today_tasks)
         setTomorrowTasks(myStandup.tomorrow_tasks)
@@ -245,7 +257,7 @@ export default function StandupClient({ currentProfile, teamProfiles, initialMil
         setProgressRate(myStandup.progress_rate)
         setProductivityScore(myStandup.productivity_score)
         setMilestoneId(myStandup.milestone_id || '')
-        const totalMins = myStandup.work_minutes || 0
+        const totalMins = (myStandup.work_minutes || 0) + additionalMinutes
         setWorkHours(Math.floor(totalMins / 60))
         setWorkMinutes(totalMins % 60)
         setHasExistingReport(true)
@@ -258,8 +270,8 @@ export default function StandupClient({ currentProfile, teamProfiles, initialMil
         setProgressRate('most')
         setProductivityScore(5)
         setMilestoneId('')
-        setWorkHours(0)
-        setWorkMinutes(0)
+        setWorkHours(Math.floor(additionalMinutes / 60))
+        setWorkMinutes(additionalMinutes % 60)
         setHasExistingReport(false)
       }
     } catch (err: any) {
@@ -272,6 +284,28 @@ export default function StandupClient({ currentProfile, teamProfiles, initialMil
   useEffect(() => {
     fetchStandups(selectedDate)
   }, [selectedDate])
+
+  // الاستماع لأي نقل لوقت العداد بشكل مباشر أثناء فتح الصفحة
+  useEffect(() => {
+    const handleTimeTransferred = (e: Event) => {
+      const customEvent = e as CustomEvent
+      const minutes = customEvent.detail
+      if (typeof minutes === 'number' && minutes > 0) {
+        setWorkMinutes(prevMins => {
+          const totalMins = prevMins + minutes
+          setWorkHours(prevHrs => prevHrs + Math.floor(totalMins / 60))
+          return totalMins % 60
+        })
+        setIsFormVisible(true)
+        localStorage.removeItem('pending_chrono_minutes')
+      }
+    }
+
+    window.addEventListener('chrono-time-transferred', handleTimeTransferred)
+    return () => {
+      window.removeEventListener('chrono-time-transferred', handleTimeTransferred)
+    }
+  }, [])
 
   // تأثير لمزامنة الكارت المفتوح بالبوباب مع القائمة المحدثة
   useEffect(() => {

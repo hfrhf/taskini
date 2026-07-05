@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Play, Pause, RotateCcw, X, Minimize2, Maximize2, Timer, Calendar, CheckSquare, Clock, Loader2 } from 'lucide-react'
-import { getUserActiveTasks, logTaskTime, logStandupTime } from '../app/actions'
+import { getUserActiveTasks, logTaskTime } from '../app/actions'
 import Toast from './Toast'
 
 export default function ChronoWidget() {
   const pathname = usePathname()
+  const router = useRouter()
   const [displayMode, setDisplayMode] = useState<'closed' | 'open' | 'minimized'>('closed')
   const [time, setTime] = useState<number>(0)
   const [isRunning, setIsRunning] = useState<boolean>(false)
@@ -43,9 +44,14 @@ export default function ChronoWidget() {
     setIsSaving(true)
     try {
       if (convertType === 'standup') {
-        const todayStr = new Date().toISOString().split('T')[0]
-        await logStandupTime(todayStr, elapsedMinutes)
-        setToast({ message: `تم تسجيل ${elapsedMinutes} دقيقة في اللقاء اليومي بنجاح!`, type: 'success' })
+        // حفظ الوقت بالدقائق في المخزن المحلي وإرسال حدث تنبيه
+        localStorage.setItem('pending_chrono_minutes', elapsedMinutes.toString())
+        window.dispatchEvent(new CustomEvent('chrono-time-transferred', { detail: elapsedMinutes }))
+        
+        // التوجيه لصفحة اللقاء اليومي
+        router.push('/standup')
+        
+        setToast({ message: 'تم نقل الوقت للّقاء اليومي. يرجى كتابة التقرير وتأكيد الحفظ.', type: 'success' })
       } else {
         if (!selectedTaskId) {
           setToast({ message: 'يرجى اختيار المهمة أولاً', type: 'warning' })
