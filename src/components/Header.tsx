@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LogOut, Users, Calendar, FolderKanban, Edit2, Loader2, Clock, Palette, Download, MessageSquare, TrendingUp, BarChart3, Lightbulb } from 'lucide-react'
+import { LogOut, Users, Calendar, FolderKanban, Edit2, Loader2, Clock, Palette, Download, MessageSquare, TrendingUp, BarChart3, Lightbulb, Bell } from 'lucide-react'
 import { logout } from '@/app/login/actions'
-import { updateProfile } from '@/app/actions'
+import { updateProfile, getMyPendingTasks } from '@/app/actions'
 
 interface HeaderProps {
   user: {
@@ -30,6 +30,26 @@ export default function Header({ user }: HeaderProps) {
   const [isPending, setIsPending] = useState(false)
   const [activeTheme, setActiveTheme] = useState('light')
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false)
+
+  // إشعارات المهام المسندة
+  const [myTasks, setMyTasks] = useState<any[]>([])
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const tasks = await getMyPendingTasks()
+        setMyTasks(tasks)
+      } catch (e) {
+        console.error('Failed to load pending tasks for notifications', e)
+      }
+    }
+    loadNotifications()
+
+    // استعلام دوري خفيف كل 60 ثانية لتحديث قائمة الإشعارات تلقائياً
+    const interval = setInterval(loadNotifications, 60000)
+    return () => clearInterval(interval)
+  }, [])
 
   // حالات PWA وتثبيت التطبيق
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
@@ -394,6 +414,60 @@ export default function Header({ user }: HeaderProps) {
                         <span>تسجيل الخروج</span>
                       </button>
                     </form>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* جرس الإشعارات الفاخر */}
+            <div className="relative">
+              <button
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                className="p-2.5 bg-theme-panel hover:bg-theme-bg text-theme-text-muted hover:text-theme-text rounded-xl border border-theme-border transition-all duration-200 flex items-center justify-center shadow-sm cursor-pointer relative"
+                title="الإشعارات والمهام المسندة"
+              >
+                <Bell className="w-4 h-4" />
+                {myTasks.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
+                    {myTasks.length}
+                  </span>
+                )}
+              </button>
+
+              {isNotificationsOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsNotificationsOpen(false)}></div>
+                  <div className="absolute left-0 right-auto rtl:right-0 rtl:left-auto mt-2 w-72 bg-theme-panel border border-theme-border rounded-2xl shadow-xl py-3 z-50 animate-modal-in text-right">
+                    <div className="px-4 pb-2 border-b border-theme-border/50 flex items-center justify-between">
+                      <span className="text-xs font-black text-theme-text">الإشعارات</span>
+                      <span className="text-[10px] font-bold text-theme-text-muted bg-theme-bg px-2 py-0.5 rounded-full">
+                        {myTasks.length} مهام معلقة
+                      </span>
+                    </div>
+
+                    <div className="max-h-60 overflow-y-auto custom-scrollbar pt-1">
+                      {myTasks.length === 0 ? (
+                        <div className="px-4 py-6 text-center text-xs text-theme-text-muted">
+                          لا توجد مهام جديدة مسندة إليك حالياً 🎉
+                        </div>
+                      ) : (
+                        myTasks.map((task) => (
+                          <Link
+                            key={task.id}
+                            href={`/task/${task.id}`}
+                            onClick={() => setIsNotificationsOpen(false)}
+                            className="block px-4 py-3 hover:bg-theme-bg transition-colors border-b border-theme-border/20 last:border-b-0 text-right"
+                          >
+                            <p className="text-xs font-bold text-theme-text hover:text-theme-accent line-clamp-1">{task.title}</p>
+                            <div className="flex items-center gap-2 mt-1 text-[10px] text-theme-text-muted">
+                              <span>المجموعة: {task.group_name}</span>
+                              <span>•</span>
+                              <span>تسليم: {task.due_date}</span>
+                            </div>
+                          </Link>
+                        ))
+                      )}
+                    </div>
                   </div>
                 </>
               )}

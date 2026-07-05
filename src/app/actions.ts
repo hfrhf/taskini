@@ -87,7 +87,7 @@ export async function getGroups(dateString: string) {
 
       const { data: tasks } = await tasksQuery
       const total = tasks?.length || 0
-      const completed = tasks?.filter(t => t.status === 'completed').length || 0
+      const completed = tasks ? tasks.filter(t => t.status === 'completed').length : 0
       const pending = total - completed
 
       return {
@@ -238,6 +238,33 @@ export async function getTasks(groupId: string, statusFilter: string = 'all', da
   const { data: tasks, error } = await query.order('created_at', { ascending: true })
   if (error) throw new Error(error.message)
   return tasks || []
+}
+
+// جلب المهام المعلقة المسندة للمستخدم الحالي (للإشعارات)
+export async function getMyPendingTasks() {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) return []
+
+  const { data, error } = await supabase
+    .from('tasks')
+    .select(`
+      id,
+      title,
+      due_date,
+      group:task_groups(name)
+    `)
+    .eq('assigned_to', profile.id)
+    .neq('status', 'completed')
+    .order('created_at', { ascending: false })
+
+  if (error) return []
+  return (data || []).map((t: any) => ({
+    id: t.id,
+    title: t.title,
+    due_date: t.due_date,
+    group_name: t.group?.name || 'عام'
+  }))
 }
 
 // إضافة مهمة جديدة وإسنادها
@@ -841,7 +868,7 @@ export async function getMilestones() {
   // حساب نسبة التقدم لكل محطة
   const milestonesWithProgress = (data || []).map((milestone: any) => {
     const total = milestone.tasks?.length || 0
-    const completed = milestone.tasks?.filter((t: any) => t.status === 'completed').length || 0
+    const completed = milestone.tasks ? milestone.tasks.filter((t: any) => t.status === 'completed').length : 0
     const progress = total > 0 ? Math.round((completed / total) * 100) : 0
     
     return {

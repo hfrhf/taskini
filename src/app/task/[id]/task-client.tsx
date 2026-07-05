@@ -388,11 +388,11 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-xs animate-fade-in" onClick={() => setIsEditModalOpen(false)}></div>
-          <div className="relative bg-theme-panel w-full max-w-lg rounded-3xl p-5 sm:p-7 shadow-[0_25px_60px_rgba(0,0,0,0.4)] border border-theme-border animate-modal-in z-10 text-right max-h-[90vh] overflow-y-auto custom-scrollbar">
-            <div className="flex items-start justify-between gap-4 mb-4 border-b border-theme-border/50 pb-2">
+          <div className="relative bg-theme-panel w-full max-w-lg rounded-3xl p-6 sm:p-8 shadow-[0_25px_60px_rgba(0,0,0,0.4)] border border-theme-border animate-modal-in z-10 text-right max-h-[85vh] sm:max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div className="flex items-start justify-between gap-4 mb-5 border-b border-theme-border/50 pb-2">
               <div>
                 <h3 className="text-base font-black text-theme-text">تعديل تفاصيل المهمة</h3>
-                <p className="text-xs text-theme-text-muted mt-0.5">تحديث عنوان ووصف المهمة الحاليين</p>
+                <p className="text-xs text-theme-text-muted mt-1">تحديث عنوان ووصف المهمة الحاليين</p>
               </div>
               <button 
                 onClick={() => setIsEditModalOpen(false)}
@@ -402,35 +402,35 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
               </button>
             </div>
 
-            <form onSubmit={handleEditDetailsSubmit} className="space-y-3.5">
+            <form onSubmit={handleEditDetailsSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-theme-text-muted mb-1">عنوان المهمة</label>
+                <label className="block text-xs font-bold text-theme-text-muted mb-1.5">عنوان المهمة</label>
                 <input 
                   type="text" 
                   name="title" 
                   required
                   defaultValue={task.title}
-                  className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-2.5 text-xs transition-all outline-none" 
+                  className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-3 text-xs transition-all outline-none" 
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-theme-text-muted mb-1">الوصف والتفاصيل</label>
+                <label className="block text-xs font-bold text-theme-text-muted mb-1.5">الوصف والتفاصيل</label>
                 <textarea 
                   name="description" 
-                  rows={2}
+                  rows={3}
                   defaultValue={task.description || ''}
-                  className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-2.5 text-xs transition-all outline-none resize-none" 
+                  className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-3 text-xs transition-all outline-none resize-none" 
                 ></textarea>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-theme-text-muted mb-1">المسؤول عن المهمة</label>
+                  <label className="block text-xs font-bold text-theme-text-muted mb-1.5">المسؤول عن المهمة</label>
                   <select 
                     name="assigned_to"
                     required
                     defaultValue={task.assigned_to || ''}
-                    className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-2.5 text-xs transition-all outline-none cursor-pointer font-semibold"
+                    className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-3 text-xs transition-all outline-none cursor-pointer font-semibold"
                   >
                     {currentProfile.role === 'admin' ? (
                       teamProfiles.map(u => (
@@ -442,76 +442,74 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-theme-text-muted mb-1">الموعد النهائي للتسليم</label>
+                  <label className="block text-xs font-bold text-theme-text-muted mb-1.5">الموعد النهائي للتسليم</label>
                   <DatePicker 
                     name="due_date"
                     value={taskDueDate}
                     onChange={setTaskDueDate}
-                    className="bg-theme-input focus:bg-theme-panel py-2.5"
+                    className="bg-theme-input focus:bg-theme-panel py-3"
                     direction="up"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div>
-                  <label className="block text-xs font-bold text-theme-text-muted mb-1">المحطة الكبرى المرتبطة (Milestone)</label>
-                  <select 
-                    value={taskMilestoneId}
-                    onChange={(e) => setTaskMilestoneId(e.target.value)}
-                    className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-2.5 text-xs transition-all outline-none cursor-pointer font-semibold"
-                  >
-                    <option value="">أعمال عامة / غير مرتبطة بمحطة</option>
-                    {milestones.map(m => (
-                      <option key={m.id} value={m.id}>
-                        {m.status === 'completed' ? '💯' : m.status === 'delayed' ? '⚠️' : '🎯'} {m.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-theme-text-muted mb-1.5">المحطة الكبرى المرتبطة (Milestone)</label>
+                <select 
+                  value={taskMilestoneId}
+                  onChange={(e) => setTaskMilestoneId(e.target.value)}
+                  className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-3 text-xs transition-all outline-none cursor-pointer font-semibold"
+                >
+                  <option value="">أعمال عامة / غير مرتبطة بمحطة</option>
+                  {milestones.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.status === 'completed' ? '💯' : m.status === 'delayed' ? '⚠️' : '🎯'} {m.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-theme-text-muted mb-1">وقت العمل المسجل</label>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 flex items-center gap-1.5">
-                      <input 
-                        type="number"
-                        name="work_hours"
-                        min={0}
-                        max={24}
-                        value={taskWorkHours}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value) || 0
-                          setTaskWorkHours(Math.min(24, Math.max(0, val)))
-                        }}
-                        className="w-full text-center bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl py-2 text-xs transition-all outline-none font-bold"
-                        placeholder="0"
-                      />
-                      <span className="text-[10px] font-bold text-theme-text-muted shrink-0">ساعة</span>
-                    </div>
-                    <div className="flex-1 flex items-center gap-1.5">
-                      <input 
-                        type="number"
-                        name="work_minutes"
-                        min={0}
-                        max={59}
-                        value={taskWorkMinutes}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value) || 0
-                          setTaskWorkMinutes(Math.min(59, Math.max(0, val)))
-                        }}
-                        className="w-full text-center bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl py-2 text-xs transition-all outline-none font-bold"
-                        placeholder="00"
-                      />
-                      <span className="text-[10px] font-bold text-theme-text-muted shrink-0">دقيقة</span>
-                    </div>
+              <div>
+                <label className="block text-xs font-bold text-theme-text-muted mb-1.5">وقت العمل المسجل</label>
+                <div className="flex items-center gap-4 bg-theme-bg/30 border border-theme-border/60 rounded-xl p-3.5">
+                  <div className="flex-1 flex items-center gap-2">
+                    <input 
+                      type="number"
+                      name="work_hours"
+                      min={0}
+                      max={24}
+                      value={taskWorkHours}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0
+                        setTaskWorkHours(Math.min(24, Math.max(0, val)))
+                      }}
+                      className="w-full text-center bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl py-2.5 text-xs transition-all outline-none font-bold"
+                      placeholder="0"
+                    />
+                    <span className="text-xs font-bold text-theme-text-muted shrink-0">ساعة</span>
+                  </div>
+                  <div className="flex-1 flex items-center gap-2">
+                    <input 
+                      type="number"
+                      name="work_minutes"
+                      min={0}
+                      max={59}
+                      value={taskWorkMinutes}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0
+                        setTaskWorkMinutes(Math.min(59, Math.max(0, val)))
+                      }}
+                      className="w-full text-center bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl py-2.5 text-xs transition-all outline-none font-bold"
+                      placeholder="00"
+                    />
+                    <span className="text-xs font-bold text-theme-text-muted shrink-0">دقيقة</span>
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-theme-text-muted mb-1.5">اختر لون بوكس المهمة للتمييز:</label>
-                <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                <label className="block text-xs font-bold text-theme-text-muted mb-2">اختر لون بوكس المهمة للتمييز:</label>
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
                   {Object.keys(colorClassMap).map((colorKey) => (
                     <label key={colorKey} className="cursor-pointer">
                       <input 
@@ -522,7 +520,7 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
                         onChange={() => setTaskColor(colorKey)}
                         className="peer sr-only"
                       />
-                      <div className="peer-checked:ring-2 peer-checked:ring-theme-accent border border-theme-border rounded-xl py-1.5 px-0.5 text-center text-[10px] font-bold bg-theme-panel text-theme-text transition-all select-none">
+                      <div className="peer-checked:ring-2 peer-checked:ring-theme-accent border border-theme-border rounded-xl py-2 px-1 text-center text-[10px] font-bold bg-theme-panel text-theme-text transition-all select-none">
                         {colorKey === 'classic' ? 'أبيض' : 
                          colorKey === 'pastel-red' ? 'وردي' : 
                          colorKey === 'pastel-blue' ? 'سماوي' : 
