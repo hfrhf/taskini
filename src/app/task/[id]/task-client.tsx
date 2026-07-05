@@ -83,11 +83,15 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
   const [taskDueDate, setTaskDueDate] = useState(task.due_date || '')
   const [taskMilestoneId, setTaskMilestoneId] = useState(task.milestone_id || '')
   const [taskColor, setTaskColor] = useState(task.color || 'classic')
+  const [taskWorkHours, setTaskWorkHours] = useState<number>(0)
+  const [taskWorkMinutes, setTaskWorkMinutes] = useState<number>(0)
 
   const openEditModal = () => {
     setTaskDueDate(task.due_date || '')
     setTaskMilestoneId(task.milestone_id || '')
     setTaskColor(task.color || 'classic')
+    setTaskWorkHours(Math.floor((task.work_minutes || 0) / 60))
+    setTaskWorkMinutes((task.work_minutes || 0) % 60)
     setIsEditModalOpen(true)
   }
 
@@ -125,7 +129,9 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
     const title = formData.get('title') as string
     const description = formData.get('description') as string
     const assignedTo = formData.get('assigned_to') as string
+    const workHours = parseInt(formData.get('work_hours') as string) || 0
     const workMinutes = parseInt(formData.get('work_minutes') as string) || 0
+    const totalMinutes = (workHours * 60) + workMinutes
 
     try {
       setIsSavingDetails(true)
@@ -137,7 +143,7 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
         assignedTo || null,
         taskDueDate,
         taskColor,
-        workMinutes
+        totalMinutes
       )
 
       // البحث عن المسؤول في قائمة الفريق لتحديث الاسم والصورة بالواجهة
@@ -155,7 +161,7 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
         assignee: selectedAssignee ? { name: selectedAssignee.name, email: selectedAssignee.email, avatar_url: selectedAssignee.avatar_url } : null,
         due_date: taskDueDate,
         color: taskColor,
-        work_minutes: workMinutes
+        work_minutes: totalMinutes
       })
 
       showToast('تم حفظ التعديلات بنجاح', 'success')
@@ -448,15 +454,41 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-theme-text-muted mb-1.5">وقت العمل المسجل (بالدقائق)</label>
-                <input 
-                  type="number" 
-                  name="work_minutes" 
-                  min={0}
-                  defaultValue={task.work_minutes || 0}
-                  className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-3 text-xs transition-all outline-none" 
-                  placeholder="مثال: 60"
-                />
+                <label className="block text-xs font-bold text-theme-text-muted mb-1.5">وقت العمل المسجل</label>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex items-center gap-2">
+                    <input 
+                      type="number"
+                      name="work_hours"
+                      min={0}
+                      max={24}
+                      value={taskWorkHours}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0
+                        setTaskWorkHours(Math.min(24, Math.max(0, val)))
+                      }}
+                      className="w-full text-center bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl py-2.5 text-xs transition-all outline-none font-bold"
+                      placeholder="0"
+                    />
+                    <span className="text-xs font-bold text-theme-text-muted">ساعة</span>
+                  </div>
+                  <div className="flex-1 flex items-center gap-2">
+                    <input 
+                      type="number"
+                      name="work_minutes"
+                      min={0}
+                      max={59}
+                      value={taskWorkMinutes}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0
+                        setTaskWorkMinutes(Math.min(59, Math.max(0, val)))
+                      }}
+                      className="w-full text-center bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl py-2.5 text-xs transition-all outline-none font-bold"
+                      placeholder="00"
+                    />
+                    <span className="text-xs font-bold text-theme-text-muted">دقيقة</span>
+                  </div>
+                </div>
               </div>
 
               <div>

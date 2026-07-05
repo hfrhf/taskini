@@ -336,61 +336,57 @@ export default function ChronoWidget() {
       {isConvertModalOpen && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-fade-in" role="dialog">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity" onClick={() => setIsConvertModalOpen(false)}></div>
-          <div className="relative bg-theme-panel w-full max-w-sm rounded-3xl p-6 shadow-[0_25px_60px_rgba(0,0,0,0.4)] border border-theme-border animate-modal-in z-10 text-right max-h-[90vh] overflow-y-auto custom-scrollbar">
-            <div className="flex items-start justify-between gap-4 mb-5 border-b border-theme-border/50 pb-2">
+          <div className="relative bg-theme-panel w-full max-w-sm rounded-3xl p-5 shadow-[0_25px_60px_rgba(0,0,0,0.4)] border border-theme-border animate-modal-in z-10 text-right max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div className="flex items-start justify-between gap-4 mb-4 border-b border-theme-border/50 pb-2">
               <div>
-                <h3 className="text-sm font-black text-theme-text">تحويل وقت العداد</h3>
-                <p className="text-[10px] text-theme-text-muted mt-0.5">تسجيل الوقت المستغرق في إنجاز أعمالك</p>
+                <h3 className="text-xs font-black text-theme-text">تحويل وقت العداد</h3>
+                <p className="text-[9px] text-theme-text-muted mt-0.5">تسجيل الوقت المستغرق في إنجاز أعمالك</p>
               </div>
               <button 
                 onClick={() => setIsConvertModalOpen(false)}
-                className="p-1 text-theme-text-muted hover:text-theme-text hover:bg-theme-bg rounded-xl transition-colors cursor-pointer"
+                className="p-1 text-theme-text-muted hover:text-theme-text hover:bg-theme-bg rounded-xl transition-colors cursor-pointer text-xs"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-4">
-              {/* عرض الوقت المستغرق */}
-              <div className="bg-theme-bg/60 border border-theme-border rounded-2xl p-3 text-center">
-                <span className="text-[10px] text-theme-text-muted font-bold block mb-1">وقت العداد المترجم</span>
-                <span className="font-mono text-base font-black text-theme-accent">
-                  {elapsedMinutes} دقيقة
+            <div className="space-y-3">
+              {/* عرض الوقت المستغرق - مبسط وأفقي */}
+              <div className="bg-theme-bg/40 border border-theme-border rounded-2xl p-2.5 flex items-center justify-between text-xs">
+                <span className="text-theme-text-muted font-bold">وقت العداد المترجم:</span>
+                <span className="font-mono font-black text-theme-accent text-sm">
+                  {elapsedMinutes >= 60 
+                    ? `${Math.floor(elapsedMinutes / 60)}س ${elapsedMinutes % 60}د` 
+                    : `${elapsedMinutes} دقيقة`
+                  }
                 </span>
-                {elapsedMinutes >= 60 && (
-                  <span className="text-xs text-theme-text-muted block mt-1">
-                    ({Math.floor(elapsedMinutes / 60)} ساعة و {elapsedMinutes % 60} دقيقة)
-                  </span>
-                )}
               </div>
 
-              {/* اختيار نوع التحويل */}
-              <div className="space-y-2">
-                <label className="block text-[11px] font-bold text-theme-text-muted">اختر مكان التسجيل:</label>
-                <div className="grid grid-cols-2 gap-2.5">
+              {/* اختيار نوع التحويل - أزرار مسطحة ومبسطة كـ Segmented Tabs */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-bold text-theme-text-muted">اختر مكان التسجيل:</label>
+                <div className="flex bg-theme-bg/60 p-1 rounded-2xl border border-theme-border/50">
                   <button
                     type="button"
                     onClick={() => setConvertType('standup')}
-                    className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border text-xs font-bold transition-all duration-205 cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+                    className={`flex-1 py-2 rounded-xl text-[11px] font-bold transition-all duration-200 cursor-pointer ${
                       convertType === 'standup'
-                        ? 'bg-theme-accent text-theme-panel border-theme-accent shadow-sm'
-                        : 'bg-theme-bg border-theme-border text-theme-text hover:border-theme-border/80'
+                        ? 'bg-theme-accent text-theme-panel shadow-sm font-black'
+                        : 'text-theme-text-muted hover:text-theme-text'
                     }`}
                   >
-                    <Calendar className="w-5 h-5 mb-1.5" />
-                    <span>لقاء اليوميات</span>
+                    لقاء اليوميات
                   </button>
                   <button
                     type="button"
                     onClick={() => setConvertType('task')}
-                    className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border text-xs font-bold transition-all duration-205 cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+                    className={`flex-1 py-2 rounded-xl text-[11px] font-bold transition-all duration-200 cursor-pointer ${
                       convertType === 'task'
-                        ? 'bg-theme-accent text-theme-panel border-theme-accent shadow-sm'
-                        : 'bg-theme-bg border-theme-border text-theme-text hover:border-theme-border/80'
+                        ? 'bg-theme-accent text-theme-panel shadow-sm font-black'
+                        : 'text-theme-text-muted hover:text-theme-text'
                     }`}
                   >
-                    <CheckSquare className="w-5 h-5 mb-1.5" />
-                    <span>مهمة محددة</span>
+                    مهمة نشطة
                   </button>
                 </div>
               </div>
@@ -398,21 +394,21 @@ export default function ChronoWidget() {
               {/* اختيار المهمة في حال كان نوع التحويل مهمة */}
               {convertType === 'task' && (
                 <div className="space-y-1.5 animate-modal-in">
-                  <label className="block text-[11px] font-bold text-theme-text-muted">اختر المهمة النشطة:</label>
+                  <label className="block text-[10px] font-bold text-theme-text-muted">اختر المهمة النشطة:</label>
                   {isLoadingTasks ? (
-                    <div className="flex items-center justify-center p-3 text-xs text-theme-text-muted">
-                      <Loader2 className="w-4 h-4 animate-spin text-theme-accent ml-2" />
+                    <div className="flex items-center justify-center p-2 text-xs text-theme-text-muted">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-theme-accent ml-2" />
                       <span>جاري تحميل مهامك...</span>
                     </div>
                   ) : activeTasks.length === 0 ? (
-                    <p className="text-[10px] text-rose-500 bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 text-center font-bold">
+                    <p className="text-[9px] text-rose-500 bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5 text-center font-bold">
                       لا توجد مهام نشطة مسندة إليك حالياً.
                     </p>
                   ) : (
                     <select
                       value={selectedTaskId}
                       onChange={(e) => setSelectedTaskId(e.target.value)}
-                      className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-2xl px-4 py-3 text-xs transition-all outline-none cursor-pointer font-bold shadow-inner"
+                      className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-2xl px-4 py-2.5 text-xs transition-all outline-none cursor-pointer font-bold shadow-inner"
                     >
                       {activeTasks.map((t) => (
                         <option key={t.id} value={t.id}>
@@ -430,7 +426,7 @@ export default function ChronoWidget() {
                   type="button"
                   onClick={handleConvertConfirm}
                   disabled={isSaving || (convertType === 'task' && activeTasks.length === 0)}
-                  className="flex-grow order-1 sm:order-2 bg-theme-accent hover:bg-theme-accent-hover disabled:bg-neutral-300 disabled:text-theme-text-muted text-theme-panel font-bold py-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-md hover:shadow-lg active:scale-95"
+                  className="flex-grow order-1 sm:order-2 bg-theme-accent hover:bg-theme-accent-hover disabled:bg-neutral-300 disabled:text-theme-text-muted text-theme-panel font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-md hover:shadow-lg active:scale-95"
                 >
                   {isSaving ? (
                     <>
@@ -444,7 +440,7 @@ export default function ChronoWidget() {
                 <button
                   type="button"
                   onClick={() => setIsConvertModalOpen(false)}
-                  className="order-2 sm:order-1 px-4 bg-theme-bg hover:bg-theme-border border border-theme-border text-theme-text font-bold py-3 rounded-xl text-xs transition-colors cursor-pointer active:scale-95 text-center"
+                  className="order-2 sm:order-1 px-4 bg-theme-bg hover:bg-theme-border border border-theme-border text-theme-text font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer active:scale-95 text-center"
                 >
                   إلغاء
                 </button>
