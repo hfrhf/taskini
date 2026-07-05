@@ -15,7 +15,8 @@ import {
   Loader2, 
   CheckCircle2, 
   AlertCircle,
-  FileIcon
+  FileIcon,
+  Clock
 } from 'lucide-react'
 import { 
   updateTaskStatus, 
@@ -102,6 +103,12 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
   
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null)
 
+  // نافذة تسجيل وقت إنجاز المهمة
+  const [isTimeLoggerOpen, setIsTimeLoggerOpen] = useState(false)
+  const [timeLoggerHours, setTimeLoggerHours] = useState(0)
+  const [timeLoggerMinutes, setTimeLoggerMinutes] = useState(0)
+  const [isSavingTimeLog, setIsSavingTimeLog] = useState(false)
+
   const showToast = (message: string, type: 'success' | 'warning' | 'error' = 'success') => {
     setToast({ message, type })
   }
@@ -109,6 +116,14 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
   // تحديث حالة المهمة
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value
+    if (newStatus === 'completed') {
+      // إنجاز مهمة: فتح بوباب تسجيل الوقت
+      setTimeLoggerHours(0)
+      setTimeLoggerMinutes(0)
+      setIsTimeLoggerOpen(true)
+      return
+    }
+
     try {
       setIsUpdatingStatus(true)
       const updated = await updateTaskStatus(task.id, newStatus)
@@ -118,6 +133,48 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
       showToast('فشل تحديث الحالة: ' + err.message, 'error')
     } finally {
       setIsUpdatingStatus(false)
+    }
+  }
+
+  // حفظ الوقت وتأكيد الإنجاز
+  const handleTimeLoggerSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const loggedMinutes = (timeLoggerHours * 60) + timeLoggerMinutes
+    try {
+      setIsSavingTimeLog(true)
+      const updated = await updateTaskStatus(task.id, 'completed', loggedMinutes)
+      setTask({ 
+        ...task, 
+        status: updated.status, 
+        completed_date: updated.completed_date, 
+        work_minutes: updated.work_minutes 
+      })
+      showToast('أحسنت! تم حفظ الوقت وتأكيد إنجاز المهمة بنجاح', 'success')
+      setIsTimeLoggerOpen(false)
+    } catch (err: any) {
+      showToast('فشل إنجاز المهمة: ' + err.message, 'error')
+    } finally {
+      setIsSavingTimeLog(false)
+    }
+  }
+
+  // إنجاز المهمة مباشرة بدون إضافة وقت إضافي
+  const handleCompleteWithoutTime = async () => {
+    try {
+      setIsSavingTimeLog(true)
+      const updated = await updateTaskStatus(task.id, 'completed', 0)
+      setTask({ 
+        ...task, 
+        status: updated.status, 
+        completed_date: updated.completed_date,
+        work_minutes: updated.work_minutes
+      })
+      showToast('أحسنت! تم تأكيد إنجاز المهمة بنجاح', 'success')
+      setIsTimeLoggerOpen(false)
+    } catch (err: any) {
+      showToast('فشل إنجاز المهمة: ' + err.message, 'error')
+    } finally {
+      setIsSavingTimeLog(false)
     }
   }
 
@@ -548,6 +605,125 @@ export default function TaskDetailClient({ currentProfile, initialTask, initialF
                     <span>حفظ التعديلات</span>
                   )}
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* هـ) نافذة تسجيل وقت إنجاز المهمة (Time Logger Modal) */}
+      {isTimeLoggerOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-xs animate-fade-in" onClick={() => { setIsTimeLoggerOpen(false); }}></div>
+          <div className="relative bg-theme-panel w-full max-w-md rounded-[2.5rem] p-6 sm:p-8 shadow-[0_30px_70px_rgba(0,0,0,0.5)] border border-theme-border animate-modal-in z-10 text-right">
+            
+            {/* زر الإغلاق */}
+            <button 
+              onClick={() => { setIsTimeLoggerOpen(false); }}
+              className="absolute top-6 left-6 p-2 text-theme-text-muted hover:text-theme-text hover:bg-theme-bg rounded-full transition-all cursor-pointer"
+            >
+              ✕
+            </button>
+
+            {/* العنوان الرئيسي */}
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-black text-theme-text mb-2">تسجيل وقت إنجاز المهمة</h3>
+              <p className="text-xs text-theme-text-muted">
+                لقد قمت بإنجاز المهمة: <strong className="text-theme-text">{task.title}</strong>
+              </p>
+            </div>
+
+            {/* كادر الوقت المسجل مسبقاً */}
+            <div className="bg-theme-bg/30 border border-theme-border/60 rounded-2xl p-4 mb-6 flex items-center justify-center gap-2">
+              <Clock className="w-4 h-4 text-theme-accent animate-pulse" />
+              <span className="text-xs font-bold text-theme-text-muted">
+                الوقت المسجل سابقاً على هذه المهمة:
+              </span>
+              <strong className="text-xs font-black text-theme-text">
+                {Math.floor((task.work_minutes || 0) / 60)}س {(task.work_minutes || 0) % 60}د
+              </strong>
+            </div>
+
+            {/* إدخال الوقت الإضافي */}
+            <form onSubmit={handleTimeLoggerSubmit} className="space-y-6">
+              <div>
+                <label className="block text-xs font-black text-theme-text text-center mb-4 leading-relaxed">
+                  كم عدد الساعات والدقائق الإضافية التي استغرقتها لإنجاز المهمة؟
+                </label>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <label className="block text-[10px] font-bold text-theme-text-muted mb-2">عدد الساعات</label>
+                    <input 
+                      type="number"
+                      min={0}
+                      max={24}
+                      value={timeLoggerHours}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0;
+                        setTimeLoggerHours(Math.min(24, Math.max(0, val)));
+                      }}
+                      className="w-full text-center bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-2xl py-3.5 text-base font-black transition-all outline-none"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="text-center">
+                    <label className="block text-[10px] font-bold text-theme-text-muted mb-2">عدد الدقائق</label>
+                    <input 
+                      type="number"
+                      min={0}
+                      max={59}
+                      value={timeLoggerMinutes}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0;
+                        setTimeLoggerMinutes(Math.min(59, Math.max(0, val)));
+                      }}
+                      className="w-full text-center bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-2xl py-3.5 text-base font-black transition-all outline-none"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                
+                <p className="text-[10px] text-theme-text-muted text-center mt-3 font-semibold">
+                  * سيتم إضافة هذا الوقت إلى إجمالي ساعات إنجاز المهمة.
+                </p>
+              </div>
+
+              {/* أزرار الإجراءات */}
+              <div className="space-y-3">
+                <button 
+                  type="submit"
+                  disabled={isSavingTimeLog}
+                  className="w-full bg-[#0f172a] hover:bg-[#1e293b] text-white dark:bg-neutral-100 dark:hover:bg-neutral-200 dark:text-neutral-900 font-extrabold py-4 rounded-2xl text-xs transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg"
+                >
+                  {isSavingTimeLog ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>جاري حفظ الوقت وتأكيد الإنجاز...</span>
+                    </>
+                  ) : (
+                    <span>حفظ الوقت وتأكيد الإنجاز ⏱️✓</span>
+                  )}
+                </button>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    type="button"
+                    disabled={isSavingTimeLog}
+                    onClick={handleCompleteWithoutTime}
+                    className="w-full bg-theme-input hover:bg-theme-border text-theme-text font-bold py-3.5 rounded-2xl text-xs transition-colors cursor-pointer text-center"
+                  >
+                    إنجاز بدون إضافة وقت
+                  </button>
+                  <button 
+                    type="button"
+                    disabled={isSavingTimeLog}
+                    onClick={() => { setIsTimeLoggerOpen(false); }}
+                    className="w-full bg-theme-input hover:bg-theme-border text-theme-text font-bold py-3.5 rounded-2xl text-xs transition-colors cursor-pointer text-center"
+                  >
+                    إلغاء
+                  </button>
+                </div>
               </div>
             </form>
           </div>

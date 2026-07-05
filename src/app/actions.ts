@@ -354,7 +354,7 @@ export async function addTask(
 }
 
 // تعديل حالة مهمة
-export async function updateTaskStatus(taskId: string, newStatus: string) {
+export async function updateTaskStatus(taskId: string, newStatus: string, additionalMinutes: number = 0) {
   const supabase = await createClient()
   const profile = await getCurrentUserProfile()
   if (!profile) throw new Error('غير مصرح بالدخول')
@@ -362,7 +362,7 @@ export async function updateTaskStatus(taskId: string, newStatus: string) {
   // التأكد من الصلاحية (أن المهمة مسندة للمستخدم أو أنه مسؤول)
   const { data: task } = await supabase
     .from('tasks')
-    .select('assigned_to')
+    .select('assigned_to, work_minutes')
     .eq('id', taskId)
     .single()
 
@@ -372,9 +372,13 @@ export async function updateTaskStatus(taskId: string, newStatus: string) {
   }
 
   const todayStr = new Date().toISOString().split('T')[0]
-  const updateData = {
+  const updateData: any = {
     status: newStatus,
     completed_date: newStatus === 'completed' ? todayStr : null
+  }
+
+  if (newStatus === 'completed' && additionalMinutes > 0) {
+    updateData.work_minutes = (task.work_minutes || 0) + additionalMinutes
   }
 
   const { data, error } = await supabase
