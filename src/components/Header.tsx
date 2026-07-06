@@ -305,17 +305,6 @@ export default function Header({ user }: HeaderProps) {
               <Lightbulb className="w-4 h-4" />
               <span>العصف الذهني</span>
             </Link>
-            <Link 
-              href="/archive" 
-              className={`flex items-center gap-1.5 pb-1 transition-all border-b-2 ${
-                isActive('/archive') 
-                  ? 'text-theme-text border-theme-accent font-bold' 
-                  : 'text-theme-text-muted hover:text-theme-text border-transparent'
-              }`}
-            >
-              <Calendar className="w-4 h-4" />
-              <span>سجل الإنجاز التاريخي</span>
-            </Link>
           </nav>
 
           {/* معلومات الحساب والسمات */}
@@ -387,6 +376,15 @@ export default function Header({ user }: HeaderProps) {
                     >
                       <BarChart3 className="w-3.5 h-3.5" />
                       <span>تقارير الإنتاجية</span>
+                    </Link>
+
+                    <Link
+                      href="/archive"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-theme-text hover:bg-theme-bg cursor-pointer transition-colors text-right"
+                    >
+                      <Calendar className="w-3.5 h-3.5 text-theme-text-muted" />
+                      <span>سجل الإنجاز التاريخي</span>
                     </Link>
 
                     <Link
@@ -571,17 +569,7 @@ export default function Header({ user }: HeaderProps) {
           <Lightbulb className="w-5 h-5 transition-transform duration-300 active:scale-95" />
           <span>الأفكار</span>
         </Link>
-        <Link 
-          href="/archive" 
-          className={`flex flex-col items-center gap-1 text-[10px] py-2 px-2.5 rounded-2xl transition-all duration-300 relative ${
-            isActive('/archive') 
-              ? 'text-theme-accent font-bold bg-theme-accent/10 shadow-sm' 
-              : 'text-theme-text-muted hover:text-theme-text'
-          }`}
-        >
-          <Calendar className="w-5 h-5 transition-transform duration-300 active:scale-95" />
-          <span>السجل</span>
-        </Link>
+
       </nav>
 
       {/* ================== نافذة تعديل الملف الشخصي (Modal) ================== */}
