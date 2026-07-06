@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useTransition, useRef } from 'react'
 import Header from '@/components/Header'
 import Toast from '@/components/Toast'
 import { 
@@ -128,6 +128,27 @@ export default function ProfileClient({
   
   // Interactive Reactions State
   const [activeReactionPostId, setActiveReactionPostId] = useState<string | null>(null)
+  const reactionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const handleReactionMouseEnter = (pubId: string) => {
+    if (reactionTimeoutRef.current) {
+      clearTimeout(reactionTimeoutRef.current)
+      reactionTimeoutRef.current = null
+    }
+    setActiveReactionPostId(pubId)
+  }
+
+  const handleReactionMouseLeave = () => {
+    reactionTimeoutRef.current = setTimeout(() => {
+      setActiveReactionPostId(null)
+    }, 300)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (reactionTimeoutRef.current) clearTimeout(reactionTimeoutRef.current)
+    }
+  }, [])
 
   // Comments toggles
   const [openCommentsPostId, setOpenCommentsPostId] = useState<string | null>(null)
@@ -533,8 +554,8 @@ export default function ProfileClient({
                       <div className="flex items-center justify-between gap-2 relative">
                         <div 
                           className="relative flex-1"
-                          onMouseEnter={() => setActiveReactionPostId(pub.id)}
-                          onMouseLeave={() => setActiveReactionPostId(null)}
+                          onMouseEnter={() => handleReactionMouseEnter(pub.id)}
+                          onMouseLeave={handleReactionMouseLeave}
                         >
                           <button
                             onClick={() => handleReact(pub.id, 'like')}

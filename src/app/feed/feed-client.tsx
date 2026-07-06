@@ -96,6 +96,27 @@ export default function FeedClient({
 
   // Interactive Reactions State
   const [activeReactionPostId, setActiveReactionPostId] = useState<string | null>(null)
+  const reactionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const handleReactionMouseEnter = (pubId: string) => {
+    if (reactionTimeoutRef.current) {
+      clearTimeout(reactionTimeoutRef.current)
+      reactionTimeoutRef.current = null
+    }
+    setActiveReactionPostId(pubId)
+  }
+
+  const handleReactionMouseLeave = () => {
+    reactionTimeoutRef.current = setTimeout(() => {
+      setActiveReactionPostId(null)
+    }, 300)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (reactionTimeoutRef.current) clearTimeout(reactionTimeoutRef.current)
+    }
+  }, [])
 
   // Comments toggles
   const [openCommentsPostId, setOpenCommentsPostId] = useState<string | null>(null)
@@ -539,8 +560,8 @@ export default function FeedClient({
                       {/* زر التفاعل (مثل فيسبوك) */}
                       <div 
                         className="relative flex-1"
-                        onMouseEnter={() => setActiveReactionPostId(pub.id)}
-                        onMouseLeave={() => setActiveReactionPostId(null)}
+                        onMouseEnter={() => handleReactionMouseEnter(pub.id)}
+                        onMouseLeave={handleReactionMouseLeave}
                       >
                         <button
                           onClick={() => handleReact(pub.id, 'like')}
