@@ -2081,6 +2081,351 @@ export async function logStandupTime(dateString: string, minutes: number) {
   }
 }
 
+// --------------------------------------------------------------------
+// 18. عمليات ساحة المشاركة والمنشورات الاجتماعية (Publications & Social Feed Actions)
+// --------------------------------------------------------------------
+
+export async function getPublications() {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) throw new Error('غير مصرح بالدخول')
+
+  const { data, error } = await supabase
+    .from('publications')
+    .select(`
+      *,
+      user:profiles!user_id(name, avatar_url),
+      publication_reactions(user_id, reaction_type),
+      publication_comments(
+        id,
+        content,
+        created_at,
+        user_id,
+        parent_id,
+        user:profiles!user_id(name, avatar_url)
+      )
+    `)
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(error.message)
+
+  return (data || []).map((pub: any) => {
+    const reactions = pub.publication_reactions || []
+    const comments = pub.publication_comments || []
+    const userReaction = reactions.find((r: any) => r.user_id === profile.id)?.reaction_type || null
+
+    const reactionsCount = reactions.length
+    const reactionsGrouped = reactions.reduce((acc: any, curr: any) => {
+      acc[curr.reaction_type] = (acc[curr.reaction_type] || 0) + 1
+      return acc
+    }, {})
+
+    const sortedComments = comments.sort(
+      (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    )
+
+    return {
+      ...pub,
+      reactions_count: reactionsCount,
+      reactions_grouped: reactionsGrouped,
+      user_reaction: userReaction,
+      comments: sortedComments
+    }
+  })
+}
+
+export async function createPublication(content: string, formData?: FormData) {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) throw new Error('غير مصرح بالدخول')
+
+  if (!content.trim() && !formData) {
+    throw new Error('محتوى المنشور لا يمكن أن يكون فارغاً')
+  }
+
+  let imageUrl = null
+
+  if (formData) {
+    const file = formData.get('image_file') as File
+    if (file && file.size > 0) {
+      const arrayBuffer = await file.arrayBuffer()
+      const buffer = new Uint8Array(arrayBuffer)
+      
+      const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+      const storagePath = `publications/${profile.id}/${Date.now()}_${cleanFileName}`
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('task-attachments')
+        .upload(storagePath, buffer, {
+          contentType: file.type,
+          cacheControl: '3600',
+          upsert: true
+        })
+
+      if (uploadError) throw new Error(uploadError.message)
+
+      imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/task-attachments/${storagePath}`
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('publications')
+    .insert({
+      content: content.trim(),
+      image_url: imageUrl,
+      user_id: profile.id
+    })
+    .select()
+    .single()
+
+  if (error) {
+    if (imageUrl) {
+      const pathParts = imageUrl.split('/task-attachments/')
+      if (pathParts.length > 1) {
+        await supabase.storage.from('task-attachments').remove([pathParts[1]])
+      }
+    }
+    throw new Error(error.message)
+  }
+
+  revalidatePath('/feed')
+  return data
+}
+
+export async function deletePublication(pubId: string) {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) throw new Error('غير مصرح بالدخول')
+
+  const { data: pub, error: fetchErr } = await supabase
+    .from('publications')
+    .select('user_id, image_url')
+    .eq('id', pubId)
+    .single()
+
+  if (fetchErr) throw new Error(fetchErr.message)
+
+  if (pub.user_id !== profile.id && profile.role !== 'admin') {
+    throw new Error('غير مصرح لك بحذف هذا المنشور')
+  }
+
+  if (pub.image_url) {
+    const pathParts = pub.image_url.split('/task-attachments/')
+    if (pathParts.length > 1) {
+      await supabase.storage.from('task-attachments').remove([pathParts[1]])
+    }
+  }
+
+  const { error } = await supabase
+    .from('publications')
+    .delete()
+    .eq('id', pubId)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/feed')
+  return { success: true }
+}
+
+export async function togglePublicationReaction(pubId: string, reactionType: string) {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) throw new Error('غير مصرح بالدخول')
+
+  const { data: existing, error: checkErr } = await supabase
+    .from('publication_reactions')
+    .select('reaction_type')
+    .eq('publication_id', pubId)
+    .eq('user_id', profile.id)
+    .maybeSingle()
+
+  if (checkErr) throw new Error(checkErr.message)
+
+  if (existing) {
+    if (existing.reaction_type === reactionType) {
+      const { error: deleteErr } = await supabase
+        .from('publication_reactions')
+        .delete()
+        .eq('publication_id', pubId)
+        .eq('user_id', profile.id)
+
+      if (deleteErr) throw new Error(deleteErr.message)
+    } else {
+      const { error: updateErr } = await supabase
+        .from('publication_reactions')
+        .update({ reaction_type: reactionType })
+        .eq('publication_id', pubId)
+        .eq('user_id', profile.id)
+
+      if (updateErr) throw new Error(updateErr.message)
+    }
+  } else {
+    const { error: insertErr } = await supabase
+      .from('publication_reactions')
+      .insert({
+        publication_id: pubId,
+        user_id: profile.id,
+        reaction_type: reactionType
+      })
+
+    if (insertErr) throw new Error(insertErr.message)
+  }
+
+  revalidatePath('/feed')
+  return { success: true }
+}
+
+export async function addPublicationComment(pubId: string, content: string, parentId: string | null = null) {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) throw new Error('غير مصرح بالدخول')
+
+  if (!content.trim()) throw new Error('محتوى التعليق لا يمكن أن يكون فارغاً')
+
+  const { data, error } = await supabase
+    .from('publication_comments')
+    .insert({
+      publication_id: pubId,
+      user_id: profile.id,
+      parent_id: parentId,
+      content: content.trim()
+    })
+    .select()
+    .single()
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/feed')
+  return data
+}
+
+export async function deletePublicationComment(commentId: string) {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) throw new Error('غير مصرح بالدخول')
+
+  const { data: comment, error: fetchErr } = await supabase
+    .from('publication_comments')
+    .select('user_id')
+    .eq('id', commentId)
+    .single()
+
+  if (fetchErr) throw new Error(fetchErr.message)
+
+  if (comment.user_id !== profile.id && profile.role !== 'admin') {
+    throw new Error('غير مصرح لك بحذف هذا التعليق')
+  }
+
+  const { error: deleteErr } = await supabase
+    .from('publication_comments')
+    .delete()
+    .eq('id', commentId)
+
+  if (deleteErr) throw new Error(deleteErr.message)
+
+  revalidatePath('/feed')
+  return { success: true }
+}
+
+export async function getUserProfileDetails(userId: string) {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) throw new Error('غير مصرح بالدخول')
+
+  const { data: targetProfile, error: profileErr } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single()
+
+  if (profileErr) throw new Error('المستخدم غير موجود')
+
+  const { count: publicationsCount } = await supabase
+    .from('publications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+
+  const { data: userPubs } = await supabase
+    .from('publications')
+    .select('id')
+    .eq('user_id', userId)
+
+  let reactionsCount = 0
+  if (userPubs && userPubs.length > 0) {
+    const pubIds = userPubs.map(p => p.id)
+    const { count: recCount } = await supabase
+      .from('publication_reactions')
+      .select('*', { count: 'exact', head: true })
+      .in('publication_id', pubIds)
+    reactionsCount = recCount || 0
+  }
+
+  const { count: completedTasksCount } = await supabase
+    .from('tasks')
+    .select('*', { count: 'exact', head: true })
+    .eq('assigned_to', userId)
+    .eq('status', 'completed')
+
+  return {
+    profile: targetProfile,
+    stats: {
+      publications_count: publicationsCount || 0,
+      reactions_received: reactionsCount,
+      completed_tasks_count: completedTasksCount || 0
+    }
+  }
+}
+
+export async function getUserPublications(userId: string) {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) throw new Error('غير مصرح بالدخول')
+
+  const { data, error } = await supabase
+    .from('publications')
+    .select(`
+      *,
+      user:profiles!user_id(name, avatar_url),
+      publication_reactions(user_id, reaction_type),
+      publication_comments(
+        id,
+        content,
+        created_at,
+        user_id,
+        parent_id,
+        user:profiles!user_id(name, avatar_url)
+      )
+    `)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(error.message)
+
+  return (data || []).map((pub: any) => {
+    const reactions = pub.publication_reactions || []
+    const comments = pub.publication_comments || []
+    const userReaction = reactions.find((r: any) => r.user_id === profile.id)?.reaction_type || null
+
+    const reactionsCount = reactions.length
+    const reactionsGrouped = reactions.reduce((acc: any, curr: any) => {
+      acc[curr.reaction_type] = (acc[curr.reaction_type] || 0) + 1
+      return acc
+    }, {})
+
+    const sortedComments = comments.sort(
+      (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    )
+
+    return {
+      ...pub,
+      reactions_count: reactionsCount,
+      reactions_grouped: reactionsGrouped,
+      user_reaction: userReaction,
+      comments: sortedComments
+    }
+  })
+}
+
 
 
 

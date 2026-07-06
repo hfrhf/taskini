@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LogOut, Users, Calendar, FolderKanban, Edit2, Loader2, Clock, Palette, Download, MessageSquare, TrendingUp, BarChart3, Lightbulb, Bell } from 'lucide-react'
+import { LogOut, Users, Calendar, FolderKanban, Edit2, Loader2, Clock, Palette, Download, MessageSquare, TrendingUp, BarChart3, Lightbulb, Bell, Globe } from 'lucide-react'
 import { logout } from '@/app/login/actions'
 import { updateProfile, getMyPendingTasks } from '@/app/actions'
 
@@ -273,6 +273,17 @@ export default function Header({ user }: HeaderProps) {
               <span>مجموعات العمل</span>
             </Link>
             <Link 
+              href="/feed" 
+              className={`flex items-center gap-1.5 pb-1 transition-all border-b-2 ${
+                isActive('/feed') 
+                  ? 'text-theme-text border-theme-accent font-bold' 
+                  : 'text-theme-text-muted hover:text-theme-text border-transparent'
+              }`}
+            >
+              <Globe className="w-4 h-4" />
+              <span>ساحة المشاركة</span>
+            </Link>
+            <Link 
               href="/standup" 
               className={`flex items-center gap-1.5 pb-1 transition-all border-b-2 ${
                 isActive('/standup') 
@@ -526,6 +537,17 @@ export default function Header({ user }: HeaderProps) {
         >
           <FolderKanban className="w-5 h-5 transition-transform duration-300 active:scale-95" />
           <span>المجموعات</span>
+        </Link>
+        <Link 
+          href="/feed" 
+          className={`flex flex-col items-center gap-1 text-[10px] py-2 px-2.5 rounded-2xl transition-all duration-300 relative ${
+            isActive('/feed') 
+              ? 'text-theme-accent font-bold bg-theme-accent/10 shadow-sm' 
+              : 'text-theme-text-muted hover:text-theme-text'
+          }`}
+        >
+          <Globe className="w-5 h-5 transition-transform duration-300 active:scale-95" />
+          <span>المنشورات</span>
         </Link>
         <Link 
           href="/standup" 
