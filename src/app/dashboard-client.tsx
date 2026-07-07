@@ -378,7 +378,7 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
     if (!confirm('هل أنت متأكد من ترحيل جميع المهام غير المكتملة إلى اليوم التالي؟')) return
 
     try {
-      const res = await migrateTasks(activeGroupId)
+      const res = await migrateTasks(activeGroupId, selectedDate)
       if (res.success) {
         showToast(res.message, 'success')
         fetchTasksList()

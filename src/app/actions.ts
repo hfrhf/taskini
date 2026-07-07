@@ -459,7 +459,8 @@ export async function deleteTask(taskId: string) {
 }
 
 // ترحيل المهام غير المكتملة لليوم التالي
-export async function migrateTasks(groupId: string) {
+// ترحيل المهام غير المكتملة لليوم التالي
+export async function migrateTasks(groupId: string, currentDateStr?: string) {
   const supabase = await createClient()
   const profile = await getCurrentUserProfile()
   if (!profile) throw new Error('غير مصرح بالدخول')
@@ -473,12 +474,19 @@ export async function migrateTasks(groupId: string) {
 
   if (!group) throw new Error('المجموعة غير موجودة')
 
+  const baseDateStr = currentDateStr || group.date
+
   // 2. جلب المهام غير المكتملة
   let tasksQuery = supabase
     .from('tasks')
     .select('*')
     .eq('group_id', groupId)
     .neq('status', 'completed')
+
+  // إذا كانت المجموعة دائمة، نرحل المهام الخاصة بالتاريخ الحالي فقط
+  if (group.is_permanent) {
+    tasksQuery = tasksQuery.eq('due_date', baseDateStr)
+  }
 
   // للمستخدم العادي: ترحيل مهامه الخاصة فقط
   if (profile.role !== 'admin') {
@@ -492,46 +500,52 @@ export async function migrateTasks(groupId: string) {
   }
 
   // 3. تحديد تاريخ الغد
-  const currentDate = new Date(group.date)
+  const currentDate = new Date(baseDateStr)
   currentDate.setDate(currentDate.getDate() + 1)
   const tomorrowStr = currentDate.toISOString().split('T')[0]
 
-  // 4. البحث عن مجموعة الغد أو إنشائها
+  // 4. البحث عن مجموعة الغد أو إنشائها (فقط إذا لم تكن المجموعة دائمة)
   let nextGroupId = ''
-  const { data: nextGroup } = await supabase
-    .from('task_groups')
-    .select('id')
-    .eq('name', group.name)
-    .eq('date', tomorrowStr)
-    .single()
-
-  if (nextGroup) {
-    nextGroupId = nextGroup.id
+  if (group.is_permanent) {
+    nextGroupId = group.id
   } else {
-    // إنشاء مجموعة جديدة للغد
-    const { data: newGroup, error: groupCreateError } = await supabase
+    const { data: nextGroup } = await supabase
       .from('task_groups')
-      .insert({
-        name: group.name,
-        color: group.color,
-        date: tomorrowStr,
-        created_by: group.created_by,
-        assigned_to: group.assigned_to
-      })
-      .select()
+      .select('id')
+      .eq('name', group.name)
+      .eq('date', tomorrowStr)
       .single()
 
-    if (groupCreateError) throw new Error(groupCreateError.message)
-    nextGroupId = newGroup.id
+    if (nextGroup) {
+      nextGroupId = nextGroup.id
+    } else {
+      // إنشاء مجموعة جديدة للغد بنفس المواصفات ولكن للتاريخ الجديد
+      const { data: newGroup, error: groupCreateError } = await supabase
+        .from('task_groups')
+        .insert({
+          name: group.name,
+          color: group.color,
+          date: tomorrowStr,
+          created_by: group.created_by,
+          assigned_to: group.assigned_to,
+          is_permanent: false
+        })
+        .select()
+        .single()
+
+      if (groupCreateError) throw new Error(groupCreateError.message)
+      nextGroupId = newGroup.id
+    }
   }
 
-  // 5. تحديث المجموعات للمهام المترحلة
+  // 5. تحديث المجموعات للمهام المترحلة مع تعديل تاريخ الاستحقاق (due_date) لتظهر في اليوم التالي
   const taskIds = unfinishedTasks.map(t => t.id)
   const { error: updateTasksError } = await supabase
     .from('tasks')
     .update({
       group_id: nextGroupId,
-      migrated_from_date: group.date
+      migrated_from_date: baseDateStr,
+      due_date: tomorrowStr
     })
     .in('id', taskIds)
 
