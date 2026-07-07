@@ -126,6 +126,94 @@ export default function DatePicker({ value, onChange, name, placeholder, classNa
     return `${dd} ${arabicMonths[mm]} ${yyyy}`
   }
 
+  const renderCalendar = () => (
+    <>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <button
+          type="button"
+          onClick={handleNextMonth} // الشهر القادم في واجهة RTL يذهب لليمين أو اليسار حسب التصميم، هنا السهم المناسب
+          className="p-1.5 hover:bg-theme-bg rounded-xl border border-theme-border transition-colors text-theme-text cursor-pointer"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+        <div className="text-xs font-black text-theme-text">
+          {arabicMonths[currentMonth]} {currentYear}
+        </div>
+        <button
+          type="button"
+          onClick={handlePrevMonth}
+          className="p-1.5 hover:bg-theme-bg rounded-xl border border-theme-border transition-colors text-theme-text cursor-pointer"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Days of week */}
+      <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black text-theme-text-muted mb-2 border-b border-theme-border pb-1">
+        {dayNames.map((d) => (
+          <div key={d}>{d}</div>
+        ))}
+      </div>
+
+      {/* Days grid */}
+      <div className="grid grid-cols-7 gap-1 text-center">
+        {blanks.map((_, i) => (
+          <div key={`blank-${i}`} className="aspect-square" />
+        ))}
+        {days.map((day) => {
+          const yyyy = currentYear
+          const mm = String(currentMonth + 1).padStart(2, '0')
+          const dd = String(day).padStart(2, '0')
+          const dateStr = `${yyyy}-${mm}-${dd}`
+          const isSelected = value === dateStr
+          const isToday = (() => {
+            const today = new Date()
+            return today.getFullYear() === yyyy && today.getMonth() === currentMonth && today.getDate() === day
+          })()
+
+          return (
+            <button
+              key={day}
+              type="button"
+              onClick={() => handleSelectDay(day)}
+              className={`aspect-square text-xs font-bold rounded-xl transition-all flex items-center justify-center cursor-pointer ${
+                isSelected
+                  ? 'bg-theme-accent text-theme-panel shadow-sm font-black'
+                  : isToday
+                  ? 'bg-theme-accent/15 border border-theme-accent/35 text-theme-accent font-black'
+                  : 'text-theme-text hover:bg-theme-bg'
+              }`}
+            >
+              {day}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between border-t border-theme-border mt-3 pt-2 text-[10px]">
+        <button
+          type="button"
+          onClick={handleSelectToday}
+          className="px-2.5 py-1 text-theme-accent hover:bg-theme-accent/10 rounded-md font-bold transition-all cursor-pointer"
+        >
+          اليوم
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            onChange('')
+            setIsOpen(false)
+          }}
+          className="px-2.5 py-1 text-rose-500 hover:bg-rose-500/10 rounded-md font-bold transition-all cursor-pointer"
+        >
+          مسح
+        </button>
+      </div>
+    </>
+  )
+
   return (
     <div className={`relative inline-block text-right ${fullWidth ? 'w-full' : 'w-full sm:w-auto'}`} ref={containerRef}>
       {name && <input type="hidden" name={name} value={value} />}
@@ -141,104 +229,28 @@ export default function DatePicker({ value, onChange, name, placeholder, classNa
 
       {isOpen && (
         <>
-          {/* خلفية معتمة للهواتف الذكية تمنع التداخل وتمركز التركيز */}
-          <div 
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[49] sm:hidden" 
-            onClick={() => setIsOpen(false)}
-          ></div>
+          {/* وضع الهواتف المحمولة: نافذة منبثقة متمركزة بالكامل في منتصف الشاشة */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:hidden">
+            <div 
+              className="absolute inset-0 bg-black/50 backdrop-blur-xs" 
+              onClick={() => setIsOpen(false)}
+            ></div>
+            <div className="relative w-72 bg-theme-panel border border-theme-border rounded-2xl shadow-2xl p-4 z-10 animate-modal-in select-none text-right">
+              {renderCalendar()}
+            </div>
+          </div>
           
-          <div className={`fixed sm:absolute top-1/2 sm:top-auto left-1/2 sm:left-auto right-auto transform -translate-x-1/2 sm:translate-x-0 -translate-y-1/2 sm:translate-y-0 w-72 bg-theme-panel border border-theme-border rounded-2xl shadow-2xl p-4 z-50 animate-modal-in select-none ${
+          {/* وضع التابلت والأجهزة المكتبية: قائمة absolute منسدلة بمحاذاة ديناميكية */}
+          <div className={`hidden sm:block absolute w-72 bg-theme-panel border border-theme-border rounded-2xl shadow-2xl p-4 z-50 animate-modal-in select-none ${
             direction === 'up'
-              ? 'sm:bottom-full sm:mb-2'
-              : 'sm:top-full mt-2'
+              ? 'bottom-full mb-2'
+              : 'top-full mt-2'
           } ${
             dynamicAlign === 'left' 
-              ? 'left-1/2 sm:left-0 right-auto sm:right-auto' 
-              : 'left-1/2 sm:left-auto right-auto sm:right-0'
+              ? 'left-0' 
+              : 'right-0'
           }`}>
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <button
-                type="button"
-                onClick={handleNextMonth} // الشهر القادم في واجهة RTL يذهب لليمين أو اليسار حسب التصميم، هنا السهم المناسب
-                className="p-1.5 hover:bg-theme-bg rounded-xl border border-theme-border transition-colors text-theme-text cursor-pointer"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-              <div className="text-xs font-black text-theme-text">
-                {arabicMonths[currentMonth]} {currentYear}
-              </div>
-              <button
-                type="button"
-                onClick={handlePrevMonth}
-                className="p-1.5 hover:bg-theme-bg rounded-xl border border-theme-border transition-colors text-theme-text cursor-pointer"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Days of week */}
-            <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black text-theme-text-muted mb-2 border-b border-theme-border pb-1">
-              {dayNames.map((d) => (
-                <div key={d}>{d}</div>
-              ))}
-            </div>
-
-            {/* Days grid */}
-            <div className="grid grid-cols-7 gap-1 text-center">
-              {blanks.map((_, i) => (
-                <div key={`blank-${i}`} className="aspect-square" />
-              ))}
-              {days.map((day) => {
-                const yyyy = currentYear
-                const mm = String(currentMonth + 1).padStart(2, '0')
-                const dd = String(day).padStart(2, '0')
-                const dateStr = `${yyyy}-${mm}-${dd}`
-                const isSelected = value === dateStr
-                const isToday = (() => {
-                  const today = new Date()
-                  return today.getFullYear() === yyyy && today.getMonth() === currentMonth && today.getDate() === day
-                })()
-
-                return (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => handleSelectDay(day)}
-                    className={`aspect-square text-xs font-bold rounded-xl transition-all flex items-center justify-center cursor-pointer ${
-                      isSelected
-                        ? 'bg-theme-accent text-theme-panel shadow-sm font-black'
-                        : isToday
-                        ? 'bg-theme-accent/15 border border-theme-accent/35 text-theme-accent font-black'
-                        : 'text-theme-text hover:bg-theme-bg'
-                    }`}
-                  >
-                    {day}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between border-t border-theme-border mt-3 pt-2 text-[10px]">
-              <button
-                type="button"
-                onClick={handleSelectToday}
-                className="px-2.5 py-1 text-theme-accent hover:bg-theme-accent/10 rounded-md font-bold transition-all cursor-pointer"
-              >
-                اليوم
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onChange('')
-                  setIsOpen(false)
-                }}
-                className="px-2.5 py-1 text-rose-500 hover:bg-rose-500/10 rounded-md font-bold transition-all cursor-pointer"
-              >
-                مسح
-              </button>
-            </div>
+            {renderCalendar()}
           </div>
         </>
       )}
