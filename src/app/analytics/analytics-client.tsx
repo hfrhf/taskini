@@ -228,31 +228,50 @@ export default function AnalyticsClient({ currentProfile, initialData, initialMo
   const [isPending, startTransition] = useTransition()
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null)
   
-  // التحكم في فتح وغلق سجلات المستخدمين
+  // التحكم في فتح وغلق قائمة المهام البسيطة داخل بطاقة كل مستخدم
   const [expandedUsers, setExpandedUsers] = useState<Record<string, boolean>>({})
   
-  // التاريخ المختار لكل مستخدم لرؤية تفاصيل نشاطه
-  const [selectedDates, setSelectedDates] = useState<Record<string, string>>({})
+  // الشريك المختار للسجل التفصيلي الموحد أسفل الصفحة
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(currentProfile.id)
+  
+  // التاريخ المختار للتقويم التفصيلي الموحد أسفل الصفحة
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const currentUserStats = initialData.userStats.find(s => s.userId === currentProfile.id)
+    if (currentUserStats) {
+      return getDefaultDate(
+        currentProfile.id,
+        currentUserStats.dailyStandups || [],
+        currentUserStats.completedTasksDetails || [],
+        initialMonth,
+        initialYear
+      )
+    }
+    return `${initialYear}-${String(initialMonth).padStart(2, '0')}-01`
+  })
 
   // حالات المخططات البيانية التفاعلية
   const [chartMetric, setChartMetric] = useState<'hours' | 'tasks'>('hours')
   const [hoveredSlice, setHoveredSlice] = useState<number | null>(null)
 
-  const toggleUserExpand = (userId: string, userStandups: any[] = [], userTasks: any[] = []) => {
-    setExpandedUsers(prev => {
-      const isNowExpanded = !prev[userId]
-      if (isNowExpanded && !selectedDates[userId]) {
-        const defaultDate = getDefaultDate(userId, userStandups, userTasks, month, year)
-        setSelectedDates(d => ({
-          ...d,
-          [userId]: defaultDate
-        }))
+  const toggleUserExpand = (userId: string) => {
+    setExpandedUsers(prev => ({
+      ...prev,
+      [userId]: !prev[userId]
+    }))
+  }
+
+  const handleSelectUser = (userId: string, userStandups: any[] = [], userTasks: any[] = []) => {
+    setSelectedUserId(userId)
+    const defaultDate = getDefaultDate(userId, userStandups, userTasks, month, year)
+    setSelectedDate(defaultDate)
+    
+    // التمرير السلس إلى قسم السجل التفصيلي
+    setTimeout(() => {
+      const element = document.getElementById('detailed-activity-section')
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }
-      return {
-        ...prev,
-        [userId]: isNowExpanded
-      }
-    })
+    }, 50)
   }
 
   const showToast = (message: string, type: 'success' | 'warning' | 'error' = 'success') => {
@@ -269,6 +288,21 @@ export default function AnalyticsClient({ currentProfile, initialData, initialMo
       try {
         const res = await getMonthlyAnalytics(selectedMonth, selectedYear)
         setData(res)
+        
+        // تحديث التاريخ المختار للمستخدم الحالي في الشهر الجديد
+        if (selectedUserId) {
+          const activeUserStats = res.userStats.find(u => u.userId === selectedUserId)
+          if (activeUserStats) {
+            const defaultDate = getDefaultDate(
+              selectedUserId,
+              activeUserStats.dailyStandups || [],
+              activeUserStats.completedTasksDetails || [],
+              selectedMonth,
+              selectedYear
+            )
+            setSelectedDate(defaultDate)
+          }
+        }
       } catch (err: any) {
         showToast('فشل جلب بيانات التقارير: ' + err.message, 'error')
       }
@@ -762,233 +796,46 @@ export default function AnalyticsClient({ currentProfile, initialData, initialMo
                         </div>
                       </div>
 
-                      {/* زر استعراض سجل النشاط اليومي التفصيلي */}
-                      <div className="border-t border-theme-border/50 pt-3">
+                      {/* روابط التحكم السفلية بالبطاقة */}
+                      <div className="border-t border-theme-border/50 pt-3 flex items-center justify-between gap-4 flex-wrap">
+                        {hasTasks ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleUserExpand(u.userId)}
+                            className="flex items-center gap-1 text-[10px] font-black text-theme-text-muted hover:text-theme-text transition-colors cursor-pointer"
+                          >
+                            <span>استعراض المهام المكتملة ({u.completedTasksCount})</span>
+                            {isExpanded ? (
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        ) : (
+                          <div className="text-[10px] font-bold text-theme-text-muted">لا توجد مهام مكتملة</div>
+                        )}
+                        
                         <button
                           type="button"
-                          onClick={() => toggleUserExpand(u.userId, u.dailyStandups || [], u.completedTasksDetails || [])}
-                          className="w-full flex items-center justify-between text-[10px] font-black text-theme-text-muted hover:text-theme-text transition-colors cursor-pointer"
+                          onClick={() => handleSelectUser(u.userId, u.dailyStandups || [], u.completedTasksDetails || [])}
+                          className="flex items-center gap-1 text-[10px] font-black text-theme-accent hover:underline transition-colors cursor-pointer"
                         >
-                          <span>سجل النشاط اليومي التفصيلي</span>
-                          {isExpanded ? (
-                            <ChevronUp className="w-4 h-4 text-theme-text-muted" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4 text-theme-text-muted" />
-                          )}
+                          <span>عرض سجل النشاط اليومي 🔍</span>
                         </button>
-
-                        {isExpanded && (
-                          <div className="mt-3 border-t border-theme-border/40 pt-4 animate-modal-in">
-                            {(() => {
-                              const activeDate = selectedDates[u.userId]
-                              const activeStandup = activeDate ? (u.dailyStandups || []).find(s => s.date === activeDate) : null
-                              const activeTasks = activeDate ? (u.completedTasksDetails || []).filter(t => t.completedDate === activeDate) : []
-                              const isTodaySelected = activeDate === formatDateString(new Date())
-
-                              return (
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-right">
-                                  {/* عمود تقويم النشاط */}
-                                  <div className="lg:col-span-5 space-y-3">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-[10px] font-black text-theme-text-muted">تقويم نشاط الشهر</span>
-                                      <div className="flex items-center gap-3 text-[9px] text-theme-text-muted font-bold">
-                                        <span className="flex items-center gap-1">
-                                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                                          <span>ساعات العمل</span>
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                          <span>المهام</span>
-                                        </span>
-                                      </div>
-                                    </div>
-
-                                    <div className="bg-theme-bg/20 border border-theme-border/50 rounded-2xl p-3">
-                                      {/* أسماء الأيام */}
-                                      <div className="grid grid-cols-7 gap-1.5 mb-2">
-                                        {weekdays.map((w, idx) => (
-                                          <div key={idx} className="text-center text-[10px] font-bold text-theme-text-muted">
-                                            {w}
-                                          </div>
-                                        ))}
-                                      </div>
-
-                                      {/* مربعات الأيام */}
-                                      <div className="grid grid-cols-7 gap-1.5">
-                                        {monthDays.map((day, idx) => {
-                                          if (!day) return <div key={`empty-${idx}`} className="aspect-square" />
-
-                                          const dateStr = formatDateString(day)
-                                          const dayStandup = (u.dailyStandups || []).find(s => s.date === dateStr)
-                                          const dayTasks = (u.completedTasksDetails || []).filter(t => t.completedDate === dateStr)
-                                          const isSelected = selectedDates[u.userId] === dateStr
-                                          const isToday = formatDateString(new Date()) === dateStr
-                                          const hasStandup = !!dayStandup
-                                          const hasTasks = dayTasks.length > 0
-
-                                          return (
-                                            <button
-                                              key={dateStr}
-                                              type="button"
-                                              onClick={() => setSelectedDates(prev => ({ ...prev, [u.userId]: dateStr }))}
-                                              className={`aspect-square rounded-xl border flex flex-col items-center justify-between p-1 cursor-pointer transition-all duration-150 relative ${
-                                                isSelected
-                                                  ? 'border-theme-accent bg-theme-panel shadow-xs ring-2 ring-theme-accent/20 font-black text-theme-text'
-                                                  : isToday
-                                                  ? 'border-theme-accent/40 bg-theme-bg/40 text-theme-accent font-black'
-                                                  : hasStandup || hasTasks
-                                                  ? 'border-theme-border bg-theme-panel hover:bg-theme-bg/30 text-theme-text'
-                                                  : 'border-transparent bg-transparent hover:bg-theme-bg/15 text-theme-text-muted/70'
-                                              }`}
-                                            >
-                                              {/* رقم اليوم */}
-                                              <span className={`text-[10px] font-bold ${isSelected ? 'scale-105' : ''}`}>
-                                                {day.getDate()}
-                                              </span>
-
-                                              {/* المؤشرات البصرية */}
-                                              <div className="flex gap-0.5 w-full justify-center items-center">
-                                                {hasStandup && (
-                                                  <>
-                                                    <span 
-                                                      className="hidden sm:inline-flex bg-indigo-500/10 text-indigo-500 text-[8px] font-bold px-0.5 py-px rounded-sm border border-indigo-500/10"
-                                                      title="ساعات العمل"
-                                                    >
-                                                      {Math.round((dayStandup.workMinutes / 60) * 10) / 10}س
-                                                    </span>
-                                                    <span className="sm:hidden w-1.5 h-1.5 rounded-full bg-indigo-500" title="ساعات العمل" />
-                                                  </>
-                                                )}
-                                                {hasTasks && (
-                                                  <>
-                                                    <span 
-                                                      className="hidden sm:inline-flex bg-emerald-500/10 text-emerald-500 text-[8px] font-bold px-0.5 py-px rounded-sm border border-emerald-500/10"
-                                                      title="المهام المكتملة"
-                                                    >
-                                                      ✓{dayTasks.length}
-                                                    </span>
-                                                    <span className="sm:hidden w-1.5 h-1.5 rounded-full bg-emerald-500" title="المهام المكتملة" />
-                                                  </>
-                                                )}
-                                              </div>
-                                            </button>
-                                          )
-                                        })}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* عمود تفاصيل اليوم المحدد */}
-                                  <div className="lg:col-span-7 space-y-3">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-[10px] font-black text-theme-text">
-                                        {activeDate ? formatArabicDate(activeDate) : 'اختر يوماً لرؤية التفاصيل'}
-                                      </span>
-                                      {isTodaySelected && (
-                                        <span className="text-[8px] bg-theme-accent text-theme-panel font-bold px-1.5 py-0.5 rounded-md">
-                                          اليوم
-                                        </span>
-                                      )}
-                                    </div>
-
-                                    <div className="bg-theme-bg/20 border border-theme-border/50 rounded-2xl p-4 min-h-[220px] flex flex-col justify-start gap-4">
-                                      {(!activeStandup && activeTasks.length === 0) ? (
-                                        <div className="flex-grow flex flex-col items-center justify-center text-center py-10 space-y-2 opacity-65">
-                                          <Calendar className="w-8 h-8 text-theme-text-muted" />
-                                          <p className="text-xs text-theme-text-muted font-bold">لا توجد سجلات أو مهام مكتملة في هذا اليوم</p>
-                                        </div>
-                                      ) : (
-                                        <div className="space-y-4">
-                                          {/* تفاصيل اللقاء اليومي */}
-                                          {activeStandup && (
-                                            <div className="space-y-3">
-                                              <div className="flex flex-wrap gap-2 items-center justify-between border-b border-theme-border/40 pb-2.5">
-                                                <div className="flex flex-wrap gap-1.5 items-center">
-                                                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md border ${getMoodDetails(activeStandup.mood).color}`}>
-                                                    المزاج: {getMoodDetails(activeStandup.mood).label}
-                                                  </span>
-                                                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md ${getProgressRateDetails(activeStandup.progressRate).color}`}>
-                                                    {getProgressRateDetails(activeStandup.progressRate).label}
-                                                  </span>
-                                                </div>
-
-                                                <div className="flex items-center gap-3">
-                                                  <div className="flex items-center gap-1">
-                                                    <span className="text-[9px] text-theme-text-muted font-bold">الإنتاجية:</span>
-                                                    {renderStars(activeStandup.productivityScore)}
-                                                  </div>
-                                                  <div className="flex items-center gap-1 text-[10px] font-bold text-indigo-500 font-mono">
-                                                    <Clock className="w-3.5 h-3.5" />
-                                                    <span>{formatWorkTime(activeStandup.workMinutes)}</span>
-                                                  </div>
-                                                </div>
-                                              </div>
-
-                                              <div className="space-y-3 text-right">
-                                                {activeStandup.todayTasks && (
-                                                  <div>
-                                                    <h5 className="text-[10px] font-bold text-theme-text-muted mb-1 flex items-center gap-1 justify-start">
-                                                      <span className="w-1.5 h-1.5 rounded-full bg-theme-accent"></span>
-                                                      <span>ما تم إنجازه اليوم:</span>
-                                                    </h5>
-                                                    <div className="text-xs text-theme-text bg-theme-panel border border-theme-border/30 rounded-xl p-3 leading-relaxed font-semibold whitespace-pre-wrap">
-                                                      {activeStandup.todayTasks}
-                                                    </div>
-                                                  </div>
-                                                )}
-
-                                                {activeStandup.tomorrowTasks && (
-                                                  <div>
-                                                    <h5 className="text-[10px] font-bold text-theme-text-muted mb-1 flex items-center gap-1 justify-start">
-                                                      <span className="w-1.5 h-1.5 rounded-full bg-theme-accent/60"></span>
-                                                      <span>خطة الغد:</span>
-                                                    </h5>
-                                                    <div className="text-xs text-theme-text bg-theme-panel border border-theme-border/30 rounded-xl p-3 leading-relaxed font-semibold whitespace-pre-wrap">
-                                                      {activeStandup.tomorrowTasks}
-                                                    </div>
-                                                  </div>
-                                                )}
-
-                                                {activeStandup.blockers && (
-                                                  <div className="bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-xl p-3 flex gap-2 items-start text-right">
-                                                    <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
-                                                    <div className="space-y-0.5">
-                                                      <h5 className="text-[10px] font-black">العوائق والصعوبات:</h5>
-                                                      <p className="text-xs font-bold leading-relaxed whitespace-pre-wrap">{activeStandup.blockers}</p>
-                                                    </div>
-                                                  </div>
-                                                )}
-                                              </div>
-                                            </div>
-                                          )}
-
-                                          {/* المهام المكتملة */}
-                                          {activeTasks.length > 0 && (
-                                            <div className="space-y-2 pt-2 border-t border-theme-border/40">
-                                              <h5 className="text-[10px] font-black text-emerald-500 flex items-center gap-1.5 justify-start">
-                                                <CheckCircle2 className="w-4 h-4" />
-                                                <span>المهام المكتملة في هذا اليوم ({activeTasks.length}):</span>
-                                              </h5>
-                                              <div className="grid grid-cols-1 gap-1.5">
-                                                {activeTasks.map((t, idx) => (
-                                                  <div key={idx} className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-2.5 text-right">
-                                                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                                                    <span className="text-xs text-theme-text font-bold leading-normal">{t.title}</span>
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              )
-                            })()}
-                          </div>
-                        )}
                       </div>
+
+                      {/* قائمة المهام المكتملة البسيطة */}
+                      {isExpanded && hasTasks && (
+                        <div className="mt-2 bg-theme-bg/50 border border-theme-border/60 rounded-xl p-3 space-y-2 animate-modal-in">
+                          <ul className="list-disc pr-4 space-y-1.5">
+                            {u.tasks.map((taskTitle, idx) => (
+                              <li key={idx} className="text-xs text-theme-text font-medium leading-relaxed">
+                                {taskTitle}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -996,6 +843,280 @@ export default function AnalyticsClient({ currentProfile, initialData, initialMo
 
             </div>
 
+          </div>
+
+          {/* قسم سجل النشاط اليومي التفصيلي الموحد للفريق (col-12) */}
+          <div 
+            id="detailed-activity-section" 
+            className="bg-theme-panel rounded-3xl p-6 border border-theme-border shadow-sm text-right space-y-6 scroll-mt-6"
+          >
+            <div>
+              <h3 className="text-sm font-black text-theme-text flex items-center gap-2">
+                <Calendar className="w-4.5 h-4.5 text-theme-accent" />
+                <span>سجل النشاط اليومي التفصيلي للشركاء</span>
+              </h3>
+              <p className="text-[10px] text-theme-text-muted mt-0.5">
+                اختر شريكاً من القائمة أدناه لعرض تقويم أدائه وتفاصيل إنجازاته اليومية بشكل مفصل خلال الشهر.
+              </p>
+            </div>
+
+            {/* شريط اختيار الشريك */}
+            <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide border-b border-theme-border/40">
+              {data.userStats.map((u) => {
+                const isSelected = selectedUserId === u.userId
+                return (
+                  <button
+                    key={u.userId}
+                    type="button"
+                    onClick={() => handleSelectUser(u.userId, u.dailyStandups || [], u.completedTasksDetails || [])}
+                    className={`flex items-center gap-2.5 px-4 py-2 rounded-2xl border text-xs font-bold transition-all duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
+                      isSelected
+                        ? 'bg-theme-accent text-theme-panel border-theme-accent scale-[1.01] shadow-xs'
+                        : 'bg-theme-bg/40 border-theme-border text-theme-text-muted hover:text-theme-text hover:border-theme-border/80'
+                    }`}
+                  >
+                    <img 
+                      src={u.avatarUrl} 
+                      alt={u.name} 
+                      className="w-5 h-5 rounded-lg object-cover border border-theme-border shrink-0" 
+                    />
+                    <span>{u.name}</span>
+                    <span 
+                      className={`text-[8px] font-black px-1.5 py-0.5 rounded-md ${
+                        isSelected 
+                          ? 'bg-theme-panel/20 text-theme-panel' 
+                          : 'bg-theme-bg text-theme-text-muted border border-theme-border/50'
+                      }`}
+                    >
+                      {u.role === 'admin' ? 'مدير' : 'شريك'}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* لوحة عرض النشاط للشركاء */}
+            {(() => {
+              const selectedUser = data.userStats.find(u => u.userId === selectedUserId)
+              if (!selectedUser) {
+                return (
+                  <div className="flex flex-col items-center justify-center text-center py-12 space-y-2 opacity-60">
+                    <User className="w-10 h-10 text-theme-text-muted" />
+                    <p className="text-xs text-theme-text-muted font-bold">يرجى اختيار شريك لعرض سجل نشاطه.</p>
+                  </div>
+                )
+              }
+
+              const activeStandup = selectedDate ? (selectedUser.dailyStandups || []).find(s => s.date === selectedDate) : null
+              const activeTasks = selectedDate ? (selectedUser.completedTasksDetails || []).filter(t => t.completedDate === selectedDate) : []
+              const isTodaySelected = selectedDate === formatDateString(new Date())
+
+              return (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                  
+                  {/* عمود تقويم النشاط */}
+                  <div className="lg:col-span-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-theme-text-muted">تقويم نشاط الشهر</span>
+                      <div className="flex items-center gap-3 text-[10px] text-theme-text-muted font-bold">
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                          <span>ساعات العمل</span>
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                          <span>المهام</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-theme-bg/15 border border-theme-border/60 rounded-3xl p-4">
+                      {/* أسماء الأيام */}
+                      <div className="grid grid-cols-7 gap-2 mb-2 border-b border-theme-border/30 pb-2">
+                        {weekdays.map((w, idx) => (
+                          <div key={idx} className="text-center text-[10px] font-black text-theme-text-muted">
+                            {w}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* مربعات الأيام */}
+                      <div className="grid grid-cols-7 gap-2">
+                        {monthDays.map((day, idx) => {
+                          if (!day) return <div key={`empty-${idx}`} className="aspect-square" />
+
+                          const dateStr = formatDateString(day)
+                          const dayStandup = (selectedUser.dailyStandups || []).find(s => s.date === dateStr)
+                          const dayTasks = (selectedUser.completedTasksDetails || []).filter(t => t.completedDate === dateStr)
+                          const isSelected = selectedDate === dateStr
+                          const isToday = formatDateString(new Date()) === dateStr
+                          const hasStandup = !!dayStandup
+                          const hasTasks = dayTasks.length > 0
+
+                          return (
+                            <button
+                              key={dateStr}
+                              type="button"
+                              onClick={() => setSelectedDate(dateStr)}
+                              className={`aspect-square rounded-2xl border flex flex-col items-center justify-between p-2.5 cursor-pointer transition-all duration-150 relative ${
+                                isSelected
+                                  ? 'border-theme-accent bg-theme-panel shadow-sm ring-3 ring-theme-accent/15 font-black text-theme-text'
+                                  : isToday
+                                  ? 'border-theme-accent/40 bg-theme-bg/40 text-theme-accent font-black'
+                                  : hasStandup || hasTasks
+                                  ? 'border-theme-border bg-theme-panel hover:bg-theme-bg/30 text-theme-text'
+                                  : 'border-transparent bg-transparent hover:bg-theme-bg/15 text-theme-text-muted/60'
+                              }`}
+                            >
+                              {/* رقم اليوم */}
+                              <span className={`text-xs font-bold ${isSelected ? 'scale-105' : ''}`}>
+                                {day.getDate()}
+                              </span>
+
+                              {/* المؤشرات البصرية */}
+                              <div className="flex gap-1 w-full justify-center items-center">
+                                {hasStandup && (
+                                  <>
+                                    <span 
+                                      className="hidden sm:inline-flex bg-indigo-500/10 text-indigo-500 text-[8px] font-bold px-1 py-0.5 rounded-md border border-indigo-500/10"
+                                      title="ساعات العمل"
+                                    >
+                                      {Math.round((dayStandup.workMinutes / 60) * 10) / 10}س
+                                    </span>
+                                    <span className="sm:hidden w-1.5 h-1.5 rounded-full bg-indigo-500" title="ساعات العمل" />
+                                  </>
+                                )}
+                                {hasTasks && (
+                                  <>
+                                    <span 
+                                      className="hidden sm:inline-flex bg-emerald-500/10 text-emerald-500 text-[8px] font-bold px-1 py-0.5 rounded-md border border-emerald-500/10"
+                                      title="المهام المكتملة"
+                                    >
+                                      ✓{dayTasks.length}
+                                    </span>
+                                    <span className="sm:hidden w-1.5 h-1.5 rounded-full bg-emerald-500" title="المهام المكتملة" />
+                                  </>
+                                )}
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* عمود تفاصيل اليوم المحدد */}
+                  <div className="lg:col-span-7 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-theme-text">
+                        {selectedDate ? formatArabicDate(selectedDate) : 'اختر يوماً لرؤية التفاصيل'}
+                      </span>
+                      {isTodaySelected && (
+                        <span className="text-[9px] bg-theme-accent text-theme-panel font-bold px-2 py-0.5 rounded-md">
+                          اليوم
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="bg-theme-bg/15 border border-theme-border/60 rounded-3xl p-5 min-h-[260px] flex flex-col justify-start gap-5">
+                      {(!activeStandup && activeTasks.length === 0) ? (
+                        <div className="flex-grow flex flex-col items-center justify-center text-center py-12 space-y-2 opacity-60">
+                          <Calendar className="w-9 h-9 text-theme-text-muted" />
+                          <p className="text-xs text-theme-text-muted font-bold">لا توجد سجلات أو مهام مكتملة في هذا اليوم للشريك المحدد</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-5">
+                          
+                          {/* تفاصيل اللقاء اليومي */}
+                          {activeStandup && (
+                            <div className="space-y-4">
+                              
+                              {/* مقاييس الترويسة للسجل اليومي */}
+                              <div className="flex flex-wrap gap-2.5 items-center justify-between border-b border-theme-border/40 pb-3">
+                                <div className="flex flex-wrap gap-1.5 items-center">
+                                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-md border ${getMoodDetails(activeStandup.mood).color}`}>
+                                    المزاج: {getMoodDetails(activeStandup.mood).label}
+                                  </span>
+                                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-md ${getProgressRateDetails(activeStandup.progressRate).color}`}>
+                                    {getProgressRateDetails(activeStandup.progressRate).label}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] text-theme-text-muted font-bold">الإنتاجية:</span>
+                                    {renderStars(activeStandup.productivityScore)}
+                                  </div>
+                                  <div className="flex items-center gap-1 text-xs font-bold text-indigo-500 font-mono">
+                                    <Clock className="w-4 h-4 text-indigo-400" />
+                                    <span>{formatWorkTime(activeStandup.workMinutes)}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* النصوص التفصيلية */}
+                              <div className="space-y-4 text-right">
+                                {activeStandup.todayTasks && (
+                                  <div>
+                                    <h5 className="text-[10px] font-bold text-theme-text-muted mb-1.5 flex items-center gap-1 justify-start">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-theme-accent"></span>
+                                      <span>ما تم إنجازه اليوم:</span>
+                                    </h5>
+                                    <div className="text-xs text-theme-text bg-theme-panel border border-theme-border/40 rounded-2xl p-4 leading-relaxed font-semibold whitespace-pre-wrap">
+                                      {activeStandup.todayTasks}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {activeStandup.tomorrowTasks && (
+                                  <div>
+                                    <h5 className="text-[10px] font-bold text-theme-text-muted mb-1.5 flex items-center gap-1 justify-start">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-theme-accent/60"></span>
+                                      <span>خطة الغد:</span>
+                                    </h5>
+                                    <div className="text-xs text-theme-text bg-theme-panel border border-theme-border/40 rounded-2xl p-4 leading-relaxed font-semibold whitespace-pre-wrap">
+                                      {activeStandup.tomorrowTasks}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {activeStandup.blockers && (
+                                  <div className="bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-2xl p-4 flex gap-2.5 items-start text-right">
+                                    <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                                    <div className="space-y-0.5">
+                                      <h5 className="text-[10px] font-black">العوائق والصعوبات:</h5>
+                                      <p className="text-xs font-bold leading-relaxed whitespace-pre-wrap">{activeStandup.blockers}</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* المهام المكتملة */}
+                          {activeTasks.length > 0 && (
+                            <div className="space-y-2.5 pt-2.5 border-t border-theme-border/40">
+                              <h5 className="text-[10px] font-black text-emerald-500 flex items-center gap-1.5 justify-start">
+                                <CheckCircle2 className="w-4 h-4" />
+                                <span>المهام المكتملة في هذا اليوم ({activeTasks.length}):</span>
+                              </h5>
+                              <div className="grid grid-cols-1 gap-2">
+                                {activeTasks.map((t, idx) => (
+                                  <div key={idx} className="flex items-center gap-2.5 bg-emerald-500/5 border border-emerald-500/15 rounded-2xl p-3 text-right">
+                                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                                    <span className="text-xs text-theme-text font-bold leading-normal">{t.title}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
 
         </div>
