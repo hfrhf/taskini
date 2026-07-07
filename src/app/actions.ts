@@ -1448,13 +1448,10 @@ export async function getScheduledMeetings() {
   const profile = await getCurrentUserProfile()
   if (!profile) throw new Error('غير مصرح بالدخول')
 
-  const todayStr = new Date().toISOString().split('T')[0]
-
   const { data, error } = await supabase
     .from('scheduled_meetings')
     .select('*, creator:profiles(name, avatar_url)')
     .neq('status', 'held')
-    .gte('meeting_date', todayStr)
     .order('meeting_date', { ascending: true })
     .order('meeting_time', { ascending: true })
 
@@ -1525,22 +1522,29 @@ export async function updateScheduledMeeting(
   date: string,
   time: string,
   locationUrl: string,
-  notes: string
+  notes: string,
+  durationMinutes?: number | null
 ) {
   const supabase = await createClient()
   const profile = await getCurrentUserProfile()
   if (!profile || profile.role !== 'admin') throw new Error('صلاحيات غير كافية')
 
+  const updateData: any = {
+    title,
+    meeting_type: meetingType,
+    meeting_date: date,
+    meeting_time: time,
+    location_url: locationUrl || null,
+    notes: notes || null
+  }
+
+  if (durationMinutes !== undefined) {
+    updateData.duration_minutes = durationMinutes
+  }
+
   const { data: meeting, error } = await supabase
     .from('scheduled_meetings')
-    .update({
-      title,
-      meeting_type: meetingType,
-      meeting_date: date,
-      meeting_time: time,
-      location_url: locationUrl || null,
-      notes: notes || null
-    })
+    .update(updateData)
     .eq('id', meetingId)
     .select(`
       *,

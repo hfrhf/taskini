@@ -156,7 +156,7 @@ export default function AvailabilityClient({
     { date: '', time: '' }
   ])
 
-  // نموذج جدولة اجتماع نهائي أو تعديله
+  // نموذج جدولة اجتماع نهائي أو تعديله أو اجتماعات منفذة
   const [scheduleModal, setScheduleModal] = useState<{
     isOpen: boolean
     pollId: string | null
@@ -167,6 +167,9 @@ export default function AvailabilityClient({
     time: string
     locationUrl: string
     notes: string
+    status: 'scheduled' | 'held' | 'cancelled' | null
+    durationHours: number
+    durationMinutes: number
   }>({
     isOpen: false,
     pollId: null,
@@ -176,7 +179,10 @@ export default function AvailabilityClient({
     date: '',
     time: '',
     locationUrl: '',
-    notes: ''
+    notes: '',
+    status: null,
+    durationHours: 0,
+    durationMinutes: 0
   })
 
   // سجل الاجتماعات التاريخية المنفذة
@@ -424,7 +430,10 @@ export default function AvailabilityClient({
       date: option.proposed_date,
       time: option.proposed_time,
       locationUrl: poll.meeting_type === 'online' ? 'https://meet.google.com/' : '',
-      notes: `تم اعتماده بناءً على تصويت الفريق أسبوعياً.`
+      notes: `تم اعتماده بناءً على تصويت الفريق أسبوعياً.`,
+      status: 'scheduled',
+      durationHours: 0,
+      durationMinutes: 0
     })
   }
 
@@ -439,7 +448,10 @@ export default function AvailabilityClient({
       date: meeting.meeting_date,
       time: meeting.meeting_time,
       locationUrl: meeting.location_url || '',
-      notes: meeting.notes || ''
+      notes: meeting.notes || '',
+      status: meeting.status || 'scheduled',
+      durationHours: meeting.duration_minutes ? Math.floor(meeting.duration_minutes / 60) : 0,
+      durationMinutes: meeting.duration_minutes ? meeting.duration_minutes % 60 : 0
     })
   }
 
@@ -459,6 +471,10 @@ export default function AvailabilityClient({
     try {
       if (scheduleModal.meetingId) {
         // تعديل الاجتماع المجدول حالياً
+        const totalMinutes = scheduleModal.status === 'held'
+          ? (scheduleModal.durationHours * 60) + scheduleModal.durationMinutes
+          : undefined
+
         const updated = await updateScheduledMeeting(
           scheduleModal.meetingId,
           scheduleModal.title,
@@ -466,10 +482,12 @@ export default function AvailabilityClient({
           scheduleModal.date,
           scheduleModal.time,
           scheduleModal.locationUrl,
-          scheduleModal.notes
+          scheduleModal.notes,
+          totalMinutes
         )
 
         setScheduledMeetings(prev => prev.map(m => m.id === scheduleModal.meetingId ? updated : m))
+        setHeldMeetings(prev => prev.map(m => m.id === scheduleModal.meetingId ? updated : m))
         showToast('تم تعديل تفاصيل الاجتماع بنجاح! ✏️', 'success')
       } else {
         // جدولة اجتماع جديد
@@ -500,13 +518,14 @@ export default function AvailabilityClient({
     }
   }
 
-  // إلغاء اجتماع مجدول
+  // إلغاء اجتماع مجدول أو حذف اجتماع منفذ
   const handleDeleteMeeting = async (meetingId: string) => {
     if (!confirm('هل أنت متأكد من رغبتك في إلغاء وحذف هذا الاجتماع؟')) return
 
     try {
       await deleteScheduledMeeting(meetingId)
       setScheduledMeetings(prev => prev.filter(m => m.id !== meetingId))
+      setHeldMeetings(prev => prev.filter(m => m.id !== meetingId))
       showToast('تم إلغاء وحذف الاجتماع بنجاح.', 'success')
     } catch (err: any) {
       showToast(err.message || 'فشل حذف الاجتماع', 'error')
@@ -1289,6 +1308,7 @@ export default function AvailabilityClient({
                                 <th className="p-3.5">مدة الاجتماع</th>
                                 <th className="p-3.5">المنسق</th>
                                 <th className="p-3.5">ملاحظات</th>
+                                {isAdmin && <th className="p-3.5 text-center">الإجراءات</th>}
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-theme-border/50 text-theme-text">
@@ -1328,6 +1348,26 @@ export default function AvailabilityClient({
                                   <td className="p-3.5 text-theme-text-muted max-w-xs truncate" title={m.notes || ''}>
                                     {m.notes || '-'}
                                   </td>
+                                  {isAdmin && (
+                                    <td className="p-3.5 text-center">
+                                      <div className="flex items-center justify-center gap-1.5">
+                                        <button 
+                                          onClick={() => openEditMeetingModal(m)}
+                                          className="text-theme-text hover:text-theme-accent p-1 rounded hover:bg-theme-accent/10 transition-colors cursor-pointer"
+                                          title="تعديل الاجتماع"
+                                        >
+                                          <Edit2 className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button 
+                                          onClick={() => handleDeleteMeeting(m.id)}
+                                          className="text-rose-400 hover:text-rose-300 p-1 rounded hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                          title="حذف الاجتماع"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  )}
                                 </tr>
                               ))}
                             </tbody>
@@ -1443,7 +1483,7 @@ export default function AvailabilityClient({
               </button>
               <h3 className="text-base font-bold text-theme-text flex items-center gap-1.5">
                 <CalendarDays className="w-5 h-5 text-theme-accent" />
-                <span>{scheduleModal.meetingId ? 'تعديل تفاصيل الاجتماع المجدول' : 'اعتماد وجدولة الاجتماع النهائي'}</span>
+                <span>{scheduleModal.status === 'held' ? 'تعديل تفاصيل الاجتماع المنفذ' : scheduleModal.meetingId ? 'تعديل تفاصيل الاجتماع المجدول' : 'اعتماد وجدولة الاجتماع النهائي'}</span>
               </h3>
             </div>
 
@@ -1495,6 +1535,33 @@ export default function AvailabilityClient({
                   className="w-full bg-theme-input border border-theme-border rounded-xl px-3 py-2 text-xs text-theme-text focus:outline-none"
                 />
               </div>
+
+              {scheduleModal.status === 'held' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-theme-text-muted">مدة الاجتماع (ساعات)</label>
+                    <input 
+                      type="number"
+                      min={0}
+                      max={24}
+                      value={scheduleModal.durationHours}
+                      onChange={(e) => setScheduleModal(prev => ({ ...prev, durationHours: Math.min(24, Math.max(0, parseInt(e.target.value) || 0)) }))}
+                      className="w-full bg-theme-input border border-theme-border rounded-xl px-3 py-2 text-xs text-theme-text focus:outline-none focus:border-theme-accent"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-theme-text-muted">مدة الاجتماع (دقائق)</label>
+                    <input 
+                      type="number"
+                      min={0}
+                      max={59}
+                      value={scheduleModal.durationMinutes}
+                      onChange={(e) => setScheduleModal(prev => ({ ...prev, durationMinutes: Math.min(59, Math.max(0, parseInt(e.target.value) || 0)) }))}
+                      className="w-full bg-theme-input border border-theme-border rounded-xl px-3 py-2 text-xs text-theme-text focus:outline-none focus:border-theme-accent"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-theme-text-muted">ملاحظات الاجتماع</label>
