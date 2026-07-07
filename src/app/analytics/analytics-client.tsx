@@ -981,23 +981,45 @@ export default function AnalyticsClient({ currentProfile, initialData, initialMo
                           const hasStandup = !!dayStandup
                           const hasTasks = dayTasks.length > 0
 
+                          // التحقق مما إذا كان التاريخ في المستقبل
+                          const checkDay = new Date(day)
+                          checkDay.setHours(0, 0, 0, 0)
+                          const todayDate = new Date()
+                          todayDate.setHours(0, 0, 0, 0)
+                          const isFuture = checkDay.getTime() > todayDate.getTime()
+
+                          let cellColorClass = ''
+                          if (isSelected) {
+                            if (isFuture) {
+                              cellColorClass = 'bg-theme-bg border-theme-border text-theme-text font-black scale-105 shadow-md'
+                            } else {
+                              cellColorClass = hasStandup
+                                ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-emerald-500 shadow-lg shadow-emerald-500/20 font-black scale-105'
+                                : 'bg-gradient-to-br from-rose-500 to-red-600 text-white border-rose-500 shadow-lg shadow-rose-500/20 font-black scale-105'
+                            }
+                          } else {
+                            const todayRing = isToday ? 'ring-3 ring-indigo-500/40 dark:ring-indigo-400/30' : ''
+                            if (isFuture) {
+                              cellColorClass = `bg-theme-bg/5 border-theme-border/20 text-theme-text-muted/30 dark:text-theme-text-muted/20 font-medium cursor-not-allowed ${todayRing}`
+                            } else {
+                              if (hasStandup) {
+                                cellColorClass = `bg-emerald-500/10 border-emerald-500/20 dark:border-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold ${todayRing}`
+                              } else {
+                                cellColorClass = `bg-rose-500/10 border-rose-500/20 dark:border-rose-500/10 hover:bg-rose-500/20 text-rose-500 dark:text-rose-400 font-bold ${todayRing}`
+                              }
+                            }
+                          }
+
                           return (
                             <button
                               key={dateStr}
                               type="button"
+                              disabled={isFuture}
                               onClick={() => {
                                 setSelectedDate(dateStr)
                                 setIsModalOpen(true)
                               }}
-                              className={`aspect-[4/3] sm:aspect-video md:aspect-[3/2] rounded-2xl border flex flex-col justify-between p-2 sm:p-3 cursor-pointer transition-all duration-200 relative group/cell hover:scale-[1.03] hover:shadow-md active:scale-98 text-right ${
-                                isSelected
-                                  ? 'bg-gradient-to-br from-theme-accent to-indigo-600 text-theme-panel border-theme-accent shadow-lg shadow-theme-accent/20 font-black'
-                                  : isToday
-                                  ? 'border-theme-accent/60 bg-theme-bg/40 text-theme-accent font-black ring-3 ring-theme-accent/10'
-                                  : hasStandup || hasTasks
-                                  ? 'border-theme-border/80 bg-theme-panel hover:bg-theme-bg/30 text-theme-text font-bold shadow-2xs'
-                                  : 'border-transparent bg-transparent hover:bg-theme-bg/15 text-theme-text-muted/40'
-                              }`}
+                              className={`aspect-[4/3] sm:aspect-video md:aspect-[3/2] rounded-2xl border flex flex-col justify-between p-2 sm:p-3 transition-all duration-200 relative group/cell text-right ${isFuture ? '' : 'hover:scale-[1.03] hover:shadow-md active:scale-98 cursor-pointer'} ${cellColorClass}`}
                             >
                               {/* الرقم بالجهة اليمنى والإيموجي بالجهة اليسرى في الأعلى */}
                               <div className="w-full flex items-center justify-between">
@@ -1012,13 +1034,13 @@ export default function AnalyticsClient({ currentProfile, initialData, initialMo
                               {/* التفاصيل السريعة أسفل المربع */}
                               <div className="w-full flex flex-col items-start gap-0.5 sm:gap-1 mt-auto">
                                 {hasStandup && (
-                                  <span className={`text-[8px] sm:text-[9.5px] font-bold flex items-center gap-1 leading-none ${isSelected ? 'text-theme-panel' : 'text-indigo-500'}`}>
+                                  <span className={`text-[8px] sm:text-[9.5px] font-bold flex items-center gap-1 leading-none ${isSelected ? 'text-white/90' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                     <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                                     <span className="truncate max-w-full font-mono">{formatWorkTime(dayStandup.workMinutes)}</span>
                                   </span>
                                 )}
                                 {hasTasks && (
-                                  <span className={`text-[8px] sm:text-[9.5px] font-bold flex items-center gap-1 leading-none ${isSelected ? 'text-theme-panel/90' : 'text-emerald-500'}`}>
+                                  <span className={`text-[8px] sm:text-[9.5px] font-bold flex items-center gap-1 leading-none ${isSelected ? 'text-white/80' : hasStandup ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
                                     <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                                     <span className="truncate max-w-full">{dayTasks.length} {dayTasks.length === 1 ? 'مهمة' : 'مهام'}</span>
                                   </span>
