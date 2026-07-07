@@ -17,6 +17,25 @@ interface DatePickerProps {
 export default function DatePicker({ value, onChange, name, placeholder, className, align = 'right', direction = 'down', fullWidth = false }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [dynamicAlign, setDynamicAlign] = useState<'left' | 'right'>(align)
+
+  // ضبط اتجاه المحاذاة ديناميكياً بناءً على المساحة المتاحة في الشاشة لمنع اختراق الحدود
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+      const dropdownWidth = 288 // عرض w-72 هو 288 بكسل
+      const spaceRight = window.innerWidth - rect.left
+      const spaceLeft = rect.right
+
+      if (align === 'right' && spaceLeft < dropdownWidth && spaceRight >= dropdownWidth) {
+        setDynamicAlign('left')
+      } else if (align === 'left' && spaceRight < dropdownWidth && spaceLeft >= dropdownWidth) {
+        setDynamicAlign('right')
+      } else {
+        setDynamicAlign(align)
+      }
+    }
+  }, [isOpen, align])
 
   // تهيئة التاريخ بناءً على القيمة المرسلة
   const initialDate = value ? new Date(value) : new Date()
@@ -133,7 +152,7 @@ export default function DatePicker({ value, onChange, name, placeholder, classNa
               ? 'sm:bottom-full sm:mb-2'
               : 'sm:top-full mt-2'
           } ${
-            align === 'left' 
+            dynamicAlign === 'left' 
               ? 'left-1/2 sm:left-0 right-auto sm:right-auto' 
               : 'left-1/2 sm:left-auto right-auto sm:right-0'
           }`}>
