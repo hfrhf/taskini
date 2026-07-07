@@ -930,8 +930,8 @@ export default function AnalyticsClient({ currentProfile, initialData, initialMo
                 )
               }
 
-              const activeStandup = selectedDate ? (selectedUser.dailyStandups || []).find(s => s.date === selectedDate) : null
-              const activeTasks = selectedDate ? (selectedUser.completedTasksDetails || []).filter(t => t.completedDate === selectedDate) : []
+              const activeStandup = selectedDate ? (selectedUser.dailyStandups || []).find(s => s.date && s.date.substring(0, 10) === selectedDate) : null
+              const activeTasks = selectedDate ? (selectedUser.completedTasksDetails || []).filter(t => t.completedDate && t.completedDate.substring(0, 10) === selectedDate) : []
               
               return (
                 <div className="space-y-6">
@@ -974,8 +974,8 @@ export default function AnalyticsClient({ currentProfile, initialData, initialMo
                             if (!day) return <div key={`empty-${idx}`} className="aspect-[4/3] sm:aspect-video md:aspect-[3/2] opacity-0" />
 
                             const dateStr = formatDateString(day)
-                            const dayStandup = (selectedUser.dailyStandups || []).find(s => s.date === dateStr)
-                            const dayTasks = (selectedUser.completedTasksDetails || []).filter(t => t.completedDate === dateStr)
+                            const dayStandup = (selectedUser.dailyStandups || []).find(s => s.date && s.date.substring(0, 10) === dateStr)
+                            const dayTasks = (selectedUser.completedTasksDetails || []).filter(t => t.completedDate && t.completedDate.substring(0, 10) === dateStr)
                             
                             const isSelected = selectedDate === dateStr
                             const isToday = formatDateString(new Date()) === dateStr
