@@ -11,9 +11,10 @@ interface DatePickerProps {
   className?: string
   align?: 'left' | 'right'
   direction?: 'up' | 'down'
+  fullWidth?: boolean
 }
 
-export default function DatePicker({ value, onChange, name, placeholder, className, align = 'left', direction = 'down' }: DatePickerProps) {
+export default function DatePicker({ value, onChange, name, placeholder, className, align = 'left', direction = 'down', fullWidth = false }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -107,7 +108,7 @@ export default function DatePicker({ value, onChange, name, placeholder, classNa
   }
 
   return (
-    <div className="relative inline-block text-right w-full sm:w-auto" ref={containerRef}>
+    <div className={`relative inline-block text-right ${fullWidth ? 'w-full' : 'w-full sm:w-auto'}`} ref={containerRef}>
       {name && <input type="hidden" name={name} value={value} />}
       
       <button
@@ -127,7 +128,7 @@ export default function DatePicker({ value, onChange, name, placeholder, classNa
             onClick={() => setIsOpen(false)}
           ></div>
           
-          <div className={`fixed sm:absolute top-1/2 sm:top-auto -translate-x-1/2 sm:translate-x-0 -translate-y-1/2 sm:translate-y-0 w-72 bg-theme-panel border border-theme-border rounded-2xl shadow-2xl p-4 z-50 animate-modal-in select-none ${
+          <div className={`fixed sm:absolute top-1/2 sm:top-auto left-1/2 sm:left-auto right-auto transform -translate-x-1/2 sm:translate-x-0 -translate-y-1/2 sm:translate-y-0 w-72 bg-theme-panel border border-theme-border rounded-2xl shadow-2xl p-4 z-50 animate-modal-in select-none ${
             direction === 'up'
               ? 'sm:bottom-full sm:mb-2'
               : 'sm:top-full mt-2'

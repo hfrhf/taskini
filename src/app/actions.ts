@@ -458,6 +458,43 @@ export async function deleteTask(taskId: string) {
   return { success: true }
 }
 
+// نقل مهمة إلى مجموعة أخرى
+export async function moveTaskToGroup(taskId: string, targetGroupId: string) {
+  const supabase = await createClient()
+  const profile = await getCurrentUserProfile()
+  if (!profile) throw new Error('غير مصرح بالدخول')
+
+  // 1. جلب بيانات المجموعة المستهدفة
+  const { data: targetGroup, error: groupError } = await supabase
+    .from('task_groups')
+    .select('date, is_permanent')
+    .eq('id', targetGroupId)
+    .single()
+
+  if (groupError || !targetGroup) throw new Error('المجموعة المستهدفة غير موجودة')
+
+  // 2. تحديث المهمة بالمعرف الجديد للمجموعة وتاريخ استحقاقها
+  const updateData: any = {
+    group_id: targetGroupId
+  }
+
+  // إذا لم تكن المجموعة المستهدفة دائمة، نقوم بتحديث تاريخ الاستحقاق ليتطابق مع تاريخ المجموعة المستهدفة
+  if (!targetGroup.is_permanent) {
+    updateData.due_date = targetGroup.date
+  }
+
+  const { error: updateError } = await supabase
+    .from('tasks')
+    .update(updateData)
+    .eq('id', taskId)
+
+  if (updateError) throw new Error(updateError.message)
+
+  revalidatePath('/')
+  revalidatePath('/roadmap')
+  return { success: true }
+}
+
 // ترحيل المهام غير المكتملة لليوم التالي أو لتاريخ مستهدف مخصص
 export async function migrateTasks(groupId: string, currentDateStr?: string, targetDateStr?: string) {
   const supabase = await createClient()

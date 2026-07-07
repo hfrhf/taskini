@@ -20,7 +20,8 @@ import {
   Edit2,
   Pin,
   ChevronDown,
-  Loader2
+  Loader2,
+  ArrowLeftRight
 } from 'lucide-react'
 import { 
   getGroups, 
@@ -32,7 +33,8 @@ import {
   updateTaskStatus, 
   deleteTask, 
   migrateTasks,
-  updateTaskDetails
+  updateTaskDetails,
+  moveTaskToGroup
 } from './actions'
 
 interface Profile {
@@ -131,6 +133,12 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
   const [isConfirmMigrateTasksOpen, setIsConfirmMigrateTasksOpen] = useState(false)
   const [targetMigrationDate, setTargetMigrationDate] = useState('')
   
+  // نقل مهمة لمجموعة عمل أخرى
+  const [isMoveTaskModalOpen, setIsMoveTaskModalOpen] = useState(false)
+  const [movingTaskId, setMovingTaskId] = useState<string | null>(null)
+  const [movingTaskCurrentGroupId, setMovingTaskCurrentGroupId] = useState<string | null>(null)
+  const [targetMoveGroupId, setTargetMoveGroupId] = useState('')
+
   // تعديل المجموعات
   const [isEditGroupModalOpen, setIsEditGroupModalOpen] = useState(false)
   const [groupToEdit, setGroupToEdit] = useState<any | null>(null)
@@ -423,6 +431,39 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
     } finally {
       setIsConfirmDeleteTaskOpen(false)
       setTaskIdToDelete(null)
+    }
+  }
+
+  // نقل مهمة لمجموعة عمل أخرى
+  const handleMoveTaskClick = (taskId: string, currentGroupId: string) => {
+    setMovingTaskId(taskId)
+    setMovingTaskCurrentGroupId(currentGroupId)
+    
+    const availableGroups = groups.filter(g => g.id !== currentGroupId)
+    if (availableGroups.length > 0) {
+      setTargetMoveGroupId(availableGroups[0].id)
+    } else {
+      setTargetMoveGroupId('')
+    }
+    
+    setIsMoveTaskModalOpen(true)
+  }
+
+  const handleConfirmMoveTask = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!movingTaskId || !targetMoveGroupId) return
+    
+    try {
+      const res = await moveTaskToGroup(movingTaskId, targetMoveGroupId)
+      if (res.success) {
+        showToast('تم نقل المهمة بنجاح', 'success')
+        fetchTasksList()
+        setIsMoveTaskModalOpen(false)
+        setMovingTaskId(null)
+        setMovingTaskCurrentGroupId(null)
+      }
+    } catch (err: any) {
+      showToast('فشل نقل المهمة: ' + err.message, 'error')
     }
   }
 
@@ -809,6 +850,15 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
                           >
                             <Eye className="w-4 h-4" />
                           </Link>
+                          {(currentProfile.role === 'admin' || task.assigned_to === currentProfile.id) && (
+                            <button
+                              onClick={() => handleMoveTaskClick(task.id, task.group_id)}
+                              className="p-1.5 hover:bg-theme-bg text-theme-text-muted hover:text-theme-accent rounded-lg transition-colors cursor-pointer flex items-center justify-center shrink-0"
+                              title="نقل المهمة لمجموعة عمل أخرى"
+                            >
+                              <ArrowLeftRight className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           {currentProfile.role === 'admin' && (
                             <button 
                               onClick={() => handleDeleteTaskClick(task.id)}
@@ -1012,6 +1062,7 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
                     onChange={setTaskDueDate}
                     className="bg-theme-input focus:bg-theme-panel py-3"
                     direction="up"
+                    fullWidth={true}
                   />
                 </div>
               </div>
@@ -1113,6 +1164,7 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
                     onChange={setTargetMigrationDate}
                     className="w-full"
                     direction="up"
+                    fullWidth={true}
                   />
                   <button
                     type="button"
@@ -1168,6 +1220,71 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
                 نعم، احذف نهائياً
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ج-٤) نافذة نقل مهمة إلى مجموعة أخرى */}
+      {isMoveTaskModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog">
+          <div className="absolute inset-0 bg-black/45 backdrop-blur-xs animate-fade-in" onClick={() => { setIsMoveTaskModalOpen(false); setMovingTaskId(null); }}></div>
+          <div className="relative bg-theme-panel w-full max-w-md mx-4 rounded-3xl p-6 sm:p-8 shadow-2xl border border-theme-border animate-modal-in z-10 text-right">
+            <div className="flex items-start justify-between gap-4 mb-5 border-b border-theme-border/50 pb-2">
+              <div>
+                <h3 className="text-base font-black text-theme-text">نقل المهمة لمجموعة عمل أخرى</h3>
+                <p className="text-xs text-theme-text-muted mt-1">اختر مجموعة العمل التي ترغب بنقل هذه المهمة إليها</p>
+              </div>
+              <button 
+                onClick={() => { setIsMoveTaskModalOpen(false); setMovingTaskId(null); }}
+                className="p-1.5 text-theme-text-muted hover:text-theme-text hover:bg-theme-bg rounded-xl transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmMoveTask} className="space-y-5">
+              <div>
+                <label className="block text-xs font-bold text-theme-text-muted mb-2">مجموعة العمل المستهدفة:</label>
+                {groups.filter(g => g.id !== movingTaskCurrentGroupId).length > 0 ? (
+                  <select
+                    value={targetMoveGroupId}
+                    onChange={(e) => setTargetMoveGroupId(e.target.value)}
+                    required
+                    className="w-full bg-theme-input border border-theme-border focus:border-theme-accent focus:bg-theme-panel text-theme-text rounded-xl px-4 py-3 text-xs outline-none transition-all font-semibold"
+                  >
+                    {groups
+                      .filter(g => g.id !== movingTaskCurrentGroupId)
+                      .map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.name} {g.is_permanent ? '(دائمة)' : `(${g.date})`}
+                        </option>
+                      ))}
+                  </select>
+                ) : (
+                  <div className="bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs p-4 rounded-2xl font-semibold leading-relaxed">
+                    لا توجد مجموعات عمل أخرى متاحة حالياً على هذا التاريخ لنقل المهمة إليها. يمكنك إنشاء مجموعة عمل جديدة أولاً.
+                  </div>
+                )}
+               </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button 
+                  type="button"
+                  onClick={() => { setIsMoveTaskModalOpen(false); setMovingTaskId(null); }}
+                  className="px-4 py-2.5 bg-theme-input hover:bg-theme-border text-theme-text text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                {groups.filter(g => g.id !== movingTaskCurrentGroupId).length > 0 && (
+                  <button 
+                    type="submit"
+                    className="px-4 py-2.5 bg-theme-accent hover:bg-theme-accent-hover text-theme-panel text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                  >
+                    تأكيد نقل المهمة
+                  </button>
+                )}
+              </div>
+            </form>
           </div>
         </div>
       )}
