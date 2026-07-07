@@ -1107,17 +1107,17 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
             <div className="space-y-4 mb-6">
               <div>
                 <label className="block text-[10px] font-bold text-theme-text-muted mb-1.5">التاريخ المستهدف للترحيل:</label>
-                <div className="flex gap-2">
-                  <input 
-                    type="date" 
+                <div className="flex gap-2 items-center">
+                  <DatePicker 
                     value={targetMigrationDate} 
-                    onChange={(e) => setTargetMigrationDate(e.target.value)}
-                    className="flex-grow text-xs bg-theme-input border border-theme-border focus:border-theme-accent text-theme-text rounded-xl px-3 py-2.5 outline-none transition-all font-semibold"
+                    onChange={setTargetMigrationDate}
+                    className="w-full"
+                    direction="up"
                   />
                   <button
                     type="button"
                     onClick={() => setTargetMigrationDate(getTomorrowDateStr(selectedDate))}
-                    className="px-3 py-2.5 bg-theme-bg hover:bg-theme-border text-theme-accent border border-theme-border text-[10px] font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1 shrink-0"
+                    className="px-3 py-2.5 bg-theme-bg hover:bg-theme-border text-theme-accent border border-theme-border text-[10px] font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1 shrink-0 h-[38px]"
                     title="الترحيل التلقائي لليوم التالي"
                   >
                     <CalendarIcon className="w-3.5 h-3.5" />
