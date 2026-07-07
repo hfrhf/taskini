@@ -120,6 +120,9 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [isConfirmDeleteGroupOpen, setIsConfirmDeleteGroupOpen] = useState(false)
   const [groupIdToDelete, setGroupIdToDelete] = useState<string | null>(null)
+  const [isConfirmDeleteTaskOpen, setIsConfirmDeleteTaskOpen] = useState(false)
+  const [taskIdToDelete, setTaskIdToDelete] = useState<string | null>(null)
+  const [isConfirmMigrateTasksOpen, setIsConfirmMigrateTasksOpen] = useState(false)
   
   // تعديل المجموعات
   const [isEditGroupModalOpen, setIsEditGroupModalOpen] = useState(false)
@@ -373,10 +376,14 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
   }
 
   // ترحيل المهام غير المكتملة لليوم التالي
-  const handleMigrateTasks = async () => {
+  const handleMigrateTasksClick = () => {
     if (!activeGroupId) return
-    if (!confirm('هل أنت متأكد من ترحيل جميع المهام غير المكتملة إلى اليوم التالي؟')) return
+    setIsConfirmMigrateTasksOpen(true)
+  }
 
+  const handleConfirmMigrateTasks = async () => {
+    if (!activeGroupId) return
+    setIsConfirmMigrateTasksOpen(false)
     try {
       const res = await migrateTasks(activeGroupId, selectedDate)
       if (res.success) {
@@ -391,14 +398,22 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
   }
 
   // حذف مهمة
-  const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذه المهمة نهائياً؟')) return
+  const handleDeleteTaskClick = (taskId: string) => {
+    setTaskIdToDelete(taskId)
+    setIsConfirmDeleteTaskOpen(true)
+  }
+
+  const handleConfirmDeleteTask = async () => {
+    if (!taskIdToDelete) return
     try {
-      await deleteTask(taskId)
+      await deleteTask(taskIdToDelete)
       showToast('تم حذف المهمة بنجاح', 'success')
       fetchTasksList()
     } catch (err: any) {
       showToast('فشل حذف المهمة: ' + err.message, 'error')
+    } finally {
+      setIsConfirmDeleteTaskOpen(false)
+      setTaskIdToDelete(null)
     }
   }
 
@@ -692,7 +707,7 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
 
                 <div className="grid grid-cols-2 gap-2 md:flex md:items-center md:gap-2">
                   <button 
-                    onClick={handleMigrateTasks}
+                    onClick={handleMigrateTasksClick}
                     className="bg-theme-panel border border-theme-border hover:bg-theme-bg text-theme-text text-xs font-bold px-4 py-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                   >
                     <FileSpreadsheet className="w-4 h-4" />
@@ -787,7 +802,7 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
                           </Link>
                           {currentProfile.role === 'admin' && (
                             <button 
-                              onClick={() => handleDeleteTask(task.id)}
+                              onClick={() => handleDeleteTaskClick(task.id)}
                               className="p-1.5 text-theme-text-muted hover:text-rose-600 hover:bg-rose-950/20 rounded-lg transition-colors cursor-pointer shrink-0"
                               title="حذف المهمة"
                             >
@@ -1061,6 +1076,60 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
               </button>
               <button 
                 onClick={handleConfirmDeleteGroup}
+                className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                نعم، احذف نهائياً
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ج-٢) تأكيد ترحيل مهام مجموعة عمل */}
+      {isConfirmMigrateTasksOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" onClick={() => setIsConfirmMigrateTasksOpen(false)}></div>
+          <div className="relative bg-theme-panel w-full max-w-md mx-4 rounded-3xl p-6 sm:p-8 shadow-2xl border border-theme-border animate-modal-in z-10 text-right">
+            <h3 className="text-base font-bold text-theme-text mb-2">تأكيد ترحيل المهام</h3>
+            <p className="text-xs text-theme-text-muted mb-6 leading-relaxed">
+              هل أنت متأكد من ترحيل جميع المهام غير المكتملة إلى اليوم التالي؟ ستنتقل هذه المهام لتصبح مستحقة وتظهر في تاريخ الغد.
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button 
+                onClick={() => setIsConfirmMigrateTasksOpen(false)}
+                className="px-4 py-2.5 bg-theme-input hover:bg-theme-border text-theme-text text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button 
+                onClick={handleConfirmMigrateTasks}
+                className="px-4 py-2.5 bg-theme-accent hover:bg-theme-accent-hover text-theme-panel text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                نعم، رحّل المهام
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ج-٣) تأكيد حذف مهمة */}
+      {isConfirmDeleteTaskOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" onClick={() => { setIsConfirmDeleteTaskOpen(false); setTaskIdToDelete(null); }}></div>
+          <div className="relative bg-theme-panel w-full max-w-md mx-4 rounded-3xl p-6 sm:p-8 shadow-2xl border border-theme-border animate-modal-in z-10 text-right">
+            <h3 className="text-base font-bold text-theme-text mb-2">تأكيد حذف المهمة</h3>
+            <p className="text-xs text-theme-text-muted mb-6 leading-relaxed">
+              هل أنت متأكد من حذف هذه المهمة نهائياً؟ لا يمكن التراجع عن هذا الإجراء وسيتم مسح كافة البيانات والملفات المتعلقة بها.
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button 
+                onClick={() => { setIsConfirmDeleteTaskOpen(false); setTaskIdToDelete(null); }}
+                className="px-4 py-2.5 bg-theme-input hover:bg-theme-border text-theme-text text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button 
+                onClick={handleConfirmDeleteTask}
                 className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
               >
                 نعم، احذف نهائياً
