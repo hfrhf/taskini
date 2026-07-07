@@ -1064,7 +1064,7 @@ export async function getMonthlyAnalytics(month: number, year: number) {
   // 2. جلب كافة التقارير اليومية للشهر المحدد
   const { data: standups, error: standupsError } = await supabase
     .from('daily_standups')
-    .select('user_id, date, work_minutes, productivity_score')
+    .select('user_id, date, work_minutes, productivity_score, today_tasks, tomorrow_tasks, blockers, mood, progress_rate')
     .gte('date', startDate)
     .lte('date', endDate)
 
@@ -1102,7 +1102,21 @@ export async function getMonthlyAnalytics(month: number, year: number) {
       completedTasksCount: userTasks.length,
       daysLogged: totalDays,
       avgProductivity,
-      tasks: userTasks.map(t => t.title)
+      tasks: userTasks.map(t => t.title),
+      dailyStandups: userStandups.map(s => ({
+        date: s.date,
+        workMinutes: s.work_minutes,
+        productivityScore: s.productivity_score,
+        todayTasks: s.today_tasks,
+        tomorrowTasks: s.tomorrow_tasks,
+        blockers: s.blockers,
+        mood: s.mood,
+        progressRate: s.progress_rate
+      })),
+      completedTasksDetails: userTasks.map(t => ({
+        title: t.title,
+        completedDate: t.completed_date
+      }))
     }
   })
 
