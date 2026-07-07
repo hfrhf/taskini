@@ -506,6 +506,7 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
                   <DatePicker 
                     value={selectedDate}
                     onChange={setSelectedDate}
+                    align="right"
                   />
                 </div>
 

@@ -542,7 +542,7 @@ export default function StandupClient({ currentProfile, teamProfiles, initialMil
 
               <div className="flex items-center gap-2 min-w-[180px]">
                 <span className="text-xs font-bold text-theme-text-muted hidden sm:inline whitespace-nowrap">تاريخ التقرير:</span>
-                <DatePicker value={selectedDate} onChange={setSelectedDate} className="py-2.5" />
+                <DatePicker value={selectedDate} onChange={setSelectedDate} className="py-2.5" align="right" />
               </div>
             </div>
           </div>

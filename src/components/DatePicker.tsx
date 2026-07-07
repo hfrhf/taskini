@@ -14,7 +14,7 @@ interface DatePickerProps {
   fullWidth?: boolean
 }
 
-export default function DatePicker({ value, onChange, name, placeholder, className, align = 'left', direction = 'down', fullWidth = false }: DatePickerProps) {
+export default function DatePicker({ value, onChange, name, placeholder, className, align = 'right', direction = 'down', fullWidth = false }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
