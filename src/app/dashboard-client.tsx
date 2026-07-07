@@ -95,6 +95,12 @@ const colorClassMap: Record<string, { card: string; badge: string; border: strin
   }
 }
 
+const getTomorrowDateStr = (dateStr: string) => {
+  const d = new Date(dateStr)
+  d.setDate(d.getDate() + 1)
+  return d.toISOString().split('T')[0]
+}
+
 export default function DashboardClient({ currentProfile, teamProfiles, initialMilestones }: DashboardClientProps) {
   const [milestones, setMilestones] = useState<Milestone[]>(initialMilestones || [])
   
@@ -123,6 +129,7 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
   const [isConfirmDeleteTaskOpen, setIsConfirmDeleteTaskOpen] = useState(false)
   const [taskIdToDelete, setTaskIdToDelete] = useState<string | null>(null)
   const [isConfirmMigrateTasksOpen, setIsConfirmMigrateTasksOpen] = useState(false)
+  const [targetMigrationDate, setTargetMigrationDate] = useState('')
   
   // تعديل المجموعات
   const [isEditGroupModalOpen, setIsEditGroupModalOpen] = useState(false)
@@ -378,14 +385,16 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
   // ترحيل المهام غير المكتملة لليوم التالي
   const handleMigrateTasksClick = () => {
     if (!activeGroupId) return
+    const tomorrow = getTomorrowDateStr(selectedDate)
+    setTargetMigrationDate(tomorrow)
     setIsConfirmMigrateTasksOpen(true)
   }
 
   const handleConfirmMigrateTasks = async () => {
-    if (!activeGroupId) return
+    if (!activeGroupId || !targetMigrationDate) return
     setIsConfirmMigrateTasksOpen(false)
     try {
-      const res = await migrateTasks(activeGroupId, selectedDate)
+      const res = await migrateTasks(activeGroupId, selectedDate, targetMigrationDate)
       if (res.success) {
         showToast(res.message, 'success')
         fetchTasksList()
@@ -1090,10 +1099,34 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
         <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-xs" onClick={() => setIsConfirmMigrateTasksOpen(false)}></div>
           <div className="relative bg-theme-panel w-full max-w-md mx-4 rounded-3xl p-6 sm:p-8 shadow-2xl border border-theme-border animate-modal-in z-10 text-right">
-            <h3 className="text-base font-bold text-theme-text mb-2">تأكيد ترحيل المهام</h3>
-            <p className="text-xs text-theme-text-muted mb-6 leading-relaxed">
-              هل أنت متأكد من ترحيل جميع المهام غير المكتملة إلى اليوم التالي؟ ستنتقل هذه المهام لتصبح مستحقة وتظهر في تاريخ الغد.
+            <h3 className="text-base font-bold text-theme-text mb-2">ترحيل المهام غير المكتملة</h3>
+            <p className="text-xs text-theme-text-muted mb-5 leading-relaxed">
+              اختر تاريخ الاستحقاق المستهدف لترحيل المهام غير المكتملة إليه، أو استخدم الترحيل التلقائي لليوم التالي مباشرة.
             </p>
+            
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-[10px] font-bold text-theme-text-muted mb-1.5">التاريخ المستهدف للترحيل:</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="date" 
+                    value={targetMigrationDate} 
+                    onChange={(e) => setTargetMigrationDate(e.target.value)}
+                    className="flex-grow text-xs bg-theme-input border border-theme-border focus:border-theme-accent text-theme-text rounded-xl px-3 py-2.5 outline-none transition-all font-semibold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setTargetMigrationDate(getTomorrowDateStr(selectedDate))}
+                    className="px-3 py-2.5 bg-theme-bg hover:bg-theme-border text-theme-accent border border-theme-border text-[10px] font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1 shrink-0"
+                    title="الترحيل التلقائي لليوم التالي"
+                  >
+                    <CalendarIcon className="w-3.5 h-3.5" />
+                    <span>لليوم التالي</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center justify-end gap-3">
               <button 
                 onClick={() => setIsConfirmMigrateTasksOpen(false)}
@@ -1105,7 +1138,7 @@ export default function DashboardClient({ currentProfile, teamProfiles, initialM
                 onClick={handleConfirmMigrateTasks}
                 className="px-4 py-2.5 bg-theme-accent hover:bg-theme-accent-hover text-theme-panel text-xs font-bold rounded-xl transition-colors cursor-pointer"
               >
-                نعم، رحّل المهام
+                تأكيد الترحيل
               </button>
             </div>
           </div>

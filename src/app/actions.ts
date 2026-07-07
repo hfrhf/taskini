@@ -458,9 +458,8 @@ export async function deleteTask(taskId: string) {
   return { success: true }
 }
 
-// ترحيل المهام غير المكتملة لليوم التالي
-// ترحيل المهام غير المكتملة لليوم التالي
-export async function migrateTasks(groupId: string, currentDateStr?: string) {
+// ترحيل المهام غير المكتملة لليوم التالي أو لتاريخ مستهدف مخصص
+export async function migrateTasks(groupId: string, currentDateStr?: string, targetDateStr?: string) {
   const supabase = await createClient()
   const profile = await getCurrentUserProfile()
   if (!profile) throw new Error('غير مصرح بالدخول')
@@ -499,10 +498,15 @@ export async function migrateTasks(groupId: string, currentDateStr?: string) {
     return { success: false, message: 'لا توجد مهام غير مكتملة لترحيلها.' }
   }
 
-  // 3. تحديد تاريخ الغد
-  const currentDate = new Date(baseDateStr)
-  currentDate.setDate(currentDate.getDate() + 1)
-  const tomorrowStr = currentDate.toISOString().split('T')[0]
+  // 3. تحديد تاريخ الغد أو التاريخ المستهدف للترحيل
+  let tomorrowStr = ''
+  if (targetDateStr) {
+    tomorrowStr = targetDateStr
+  } else {
+    const currentDate = new Date(baseDateStr)
+    currentDate.setDate(currentDate.getDate() + 1)
+    tomorrowStr = currentDate.toISOString().split('T')[0]
+  }
 
   // 4. البحث عن مجموعة الغد أو إنشائها (فقط إذا لم تكن المجموعة دائمة)
   let nextGroupId = ''
@@ -538,7 +542,7 @@ export async function migrateTasks(groupId: string, currentDateStr?: string) {
     }
   }
 
-  // 5. تحديث المجموعات للمهام المترحلة مع تعديل تاريخ الاستحقاق (due_date) لتظهر في اليوم التالي
+  // 5. تحديث المجموعات للمهام المترحلة مع تعديل تاريخ الاستحقاق (due_date) لتظهر في اليوم التالي أو المستهدف
   const taskIds = unfinishedTasks.map(t => t.id)
   const { error: updateTasksError } = await supabase
     .from('tasks')
