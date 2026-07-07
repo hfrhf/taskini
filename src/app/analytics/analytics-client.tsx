@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import Header from '@/components/Header'
 import Toast from '@/components/Toast'
 import { 
@@ -17,7 +17,8 @@ import {
   ChevronUp,
   Check,
   AlertCircle,
-  Smile
+  Smile,
+  X
 } from 'lucide-react'
 import { getMonthlyAnalytics } from '../actions'
 
@@ -159,15 +160,15 @@ const formatWorkTime = (minutes: number) => {
 const getMoodDetails = (mood: string) => {
   switch (mood) {
     case 'energetic':
-      return { label: 'نشيط ⚡', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 dark:border-emerald-500/10' }
+      return { label: 'نشيط ⚡', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 dark:border-emerald-500/10', emoji: '⚡' }
     case 'stable':
-      return { label: 'مستقر 😊', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20 dark:border-indigo-500/10' }
+      return { label: 'مستقر 😊', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20 dark:border-indigo-500/10', emoji: '😊' }
     case 'tired':
-      return { label: 'متعب 😴', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20 dark:border-amber-500/10' }
+      return { label: 'متعب 😴', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20 dark:border-amber-500/10', emoji: '😴' }
     case 'stressed':
-      return { label: 'مجهد 😫', color: 'bg-rose-500/10 text-rose-500 border-rose-500/20 dark:border-rose-500/10' }
+      return { label: 'مجهد 😫', color: 'bg-rose-500/10 text-rose-500 border-rose-500/20 dark:border-rose-500/10', emoji: '😫' }
     default:
-      return { label: mood, color: 'bg-theme-bg text-theme-text-muted border-theme-border/60' }
+      return { label: mood, color: 'bg-theme-bg text-theme-text-muted border-theme-border/60', emoji: '😊' }
   }
 }
 
@@ -256,6 +257,20 @@ export default function AnalyticsClient({ currentProfile, initialData, initialMo
     }
     return `${initialYear}-${String(initialMonth).padStart(2, '0')}-01`
   })
+
+  // حالة فتح وإغلاق النافذة المنبثقة للتفاصيل اليومية
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  // إغلاق النافذة عند الضغط على Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsModalOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   // حالات المخططات البيانية التفاعلية
   const [chartMetric, setChartMetric] = useState<'hours' | 'tasks'>('hours')
@@ -917,15 +932,17 @@ export default function AnalyticsClient({ currentProfile, initialData, initialMo
 
               const activeStandup = selectedDate ? (selectedUser.dailyStandups || []).find(s => s.date === selectedDate) : null
               const activeTasks = selectedDate ? (selectedUser.completedTasksDetails || []).filter(t => t.completedDate === selectedDate) : []
-              const isTodaySelected = selectedDate === formatDateString(new Date())
-
+              
               return (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <div className="space-y-6">
                   
-                  {/* عمود تقويم النشاط الإبداعي */}
-                  <div className="lg:col-span-5 space-y-4">
-                    <div className="flex items-center justify-between border-b border-theme-border/40 pb-2">
-                      <span className="text-[11px] font-black text-theme-text">تقويم نشاط الشهر</span>
+                  {/* التقويم العريض بالكامل (col-12) */}
+                  <div className="w-full space-y-4">
+                    <div className="flex items-center justify-between border-b border-theme-border/40 pb-2 flex-wrap gap-2">
+                      <span className="text-xs font-black text-theme-text flex items-center gap-1.5">
+                        <span>تقويم نشاط الشهر للشركاء</span>
+                        <span className="text-[10px] text-theme-text-muted font-bold">(انقر على أي يوم لعرض تفاصيله)</span>
+                      </span>
                       
                       {/* مفاتيح التقويم (Legend) */}
                       <div className="flex items-center gap-3 text-[9px] text-theme-text-muted font-bold">
@@ -940,20 +957,20 @@ export default function AnalyticsClient({ currentProfile, initialData, initialMo
                       </div>
                     </div>
 
-                    <div className="bg-theme-bg/15 border border-theme-border/60 rounded-3xl p-4 shadow-2xs">
+                    <div className="bg-theme-bg/15 border border-theme-border/60 rounded-3xl p-4 sm:p-5 shadow-2xs">
                       {/* أسماء الأيام */}
-                      <div className="grid grid-cols-7 gap-2 mb-3 text-center">
+                      <div className="grid grid-cols-7 gap-2 mb-3 text-center border-b border-theme-border/30 pb-2">
                         {weekdays.map((w, idx) => (
-                          <div key={idx} className="text-[10px] font-black text-theme-text-muted">
+                          <div key={idx} className="text-xs font-black text-theme-text-muted">
                             {w}
                           </div>
                         ))}
                       </div>
 
-                      {/* مربعات الأيام النظيفة */}
-                      <div className="grid grid-cols-7 gap-2">
+                      {/* مربعات الأيام العريضة والواسعة */}
+                      <div className="grid grid-cols-7 gap-2 sm:gap-3.5">
                         {monthDays.map((day, idx) => {
-                          if (!day) return <div key={`empty-${idx}`} className="aspect-square" />
+                          if (!day) return <div key={`empty-${idx}`} className="aspect-[4/3] sm:aspect-video md:aspect-[3/2] opacity-0" />
 
                           const dateStr = formatDateString(day)
                           const dayStandup = (selectedUser.dailyStandups || []).find(s => s.date === dateStr)
@@ -968,33 +985,43 @@ export default function AnalyticsClient({ currentProfile, initialData, initialMo
                             <button
                               key={dateStr}
                               type="button"
-                              onClick={() => setSelectedDate(dateStr)}
-                              className={`aspect-square rounded-2xl border flex flex-col items-center justify-center p-1.5 cursor-pointer transition-all duration-200 relative group/cell hover:scale-105 active:scale-95 ${
+                              onClick={() => {
+                                setSelectedDate(dateStr)
+                                setIsModalOpen(true)
+                              }}
+                              className={`aspect-[4/3] sm:aspect-video md:aspect-[3/2] rounded-2xl border flex flex-col justify-between p-2 sm:p-3 cursor-pointer transition-all duration-200 relative group/cell hover:scale-[1.03] hover:shadow-md active:scale-98 text-right ${
                                 isSelected
-                                  ? 'bg-gradient-to-br from-theme-accent to-indigo-600 text-theme-panel border-theme-accent shadow-md shadow-theme-accent/25 font-black scale-105'
+                                  ? 'bg-gradient-to-br from-theme-accent to-indigo-600 text-theme-panel border-theme-accent shadow-lg shadow-theme-accent/20 font-black'
                                   : isToday
-                                  ? 'border-theme-accent/60 bg-theme-bg/40 text-theme-accent font-black ring-2 ring-theme-accent/10'
+                                  ? 'border-theme-accent/60 bg-theme-bg/40 text-theme-accent font-black ring-3 ring-theme-accent/10'
                                   : hasStandup || hasTasks
                                   ? 'border-theme-border/80 bg-theme-panel hover:bg-theme-bg/30 text-theme-text font-bold shadow-2xs'
-                                  : 'border-transparent bg-transparent hover:bg-theme-bg/15 text-theme-text-muted/50'
+                                  : 'border-transparent bg-transparent hover:bg-theme-bg/15 text-theme-text-muted/40'
                               }`}
                             >
-                              {/* رقم اليوم */}
-                              <span className="text-xs font-mono">{day.getDate()}</span>
+                              {/* الرقم بالجهة اليمنى والإيموجي بالجهة اليسرى في الأعلى */}
+                              <div className="w-full flex items-center justify-between">
+                                <span className="text-xs sm:text-sm font-mono font-black">{day.getDate()}</span>
+                                {dayStandup && dayStandup.mood && (
+                                  <span className="text-xs sm:text-base animate-bounce-subtle" title={`المزاج: ${getMoodDetails(dayStandup.mood).label}`}>
+                                    {getMoodDetails(dayStandup.mood).emoji || '😊'}
+                                  </span>
+                                )}
+                              </div>
 
-                              {/* النقاط المؤشرة الأنيقة بالأسفل */}
-                              <div className="flex gap-1 items-center justify-center mt-1.5 h-1.5">
+                              {/* التفاصيل السريعة أسفل المربع */}
+                              <div className="w-full flex flex-col items-start gap-0.5 sm:gap-1 mt-auto">
                                 {hasStandup && (
-                                  <span 
-                                    className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-theme-panel' : 'bg-indigo-500'}`} 
-                                    title="سجل ساعات عمل"
-                                  />
+                                  <span className={`text-[8px] sm:text-[9.5px] font-bold flex items-center gap-1 leading-none ${isSelected ? 'text-theme-panel' : 'text-indigo-500'}`}>
+                                    <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                                    <span className="truncate max-w-full font-mono">{formatWorkTime(dayStandup.workMinutes)}</span>
+                                  </span>
                                 )}
                                 {hasTasks && (
-                                  <span 
-                                    className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-theme-panel/85' : 'bg-emerald-500'}`} 
-                                    title="أنجز مهاماً مكتملة"
-                                  />
+                                  <span className={`text-[8px] sm:text-[9.5px] font-bold flex items-center gap-1 leading-none ${isSelected ? 'text-theme-panel/90' : 'text-emerald-500'}`}>
+                                    <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                                    <span className="truncate max-w-full">{dayTasks.length} {dayTasks.length === 1 ? 'مهمة' : 'مهام'}</span>
+                                  </span>
                                 )}
                               </div>
                             </button>
@@ -1004,128 +1031,144 @@ export default function AnalyticsClient({ currentProfile, initialData, initialMo
                     </div>
                   </div>
 
-                  {/* عمود تفاصيل اليوم المحدد المطور بالكامل */}
-                  <div className="lg:col-span-7 space-y-4">
-                    <div className="flex items-center justify-between border-b border-theme-border/40 pb-2">
-                      <span className="text-xs font-black text-theme-text">
-                        {selectedDate ? formatArabicDate(selectedDate) : 'اختر يوماً من التقويم'}
-                      </span>
-                      {isTodaySelected && (
-                        <span className="text-[9px] bg-theme-accent text-theme-panel font-bold px-2 py-0.5 rounded-md">
-                          اليوم
-                        </span>
-                      )}
-                    </div>
+                  {/* النافذة المنبثقة للتفاصيل اليومية (Popup Modal) */}
+                  {isModalOpen && (
+                    <div 
+                      className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50 transition-opacity duration-200"
+                      onClick={() => setIsModalOpen(false)}
+                    >
+                      <div 
+                        className="bg-theme-panel border border-theme-border rounded-3xl p-6 max-w-2xl w-full shadow-2xl relative flex flex-col gap-6 text-right max-h-[85vh] overflow-y-auto animate-modal-in"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* زر الإغلاق */}
+                        <button
+                          type="button"
+                          onClick={() => setIsModalOpen(false)}
+                          className="absolute top-4 left-4 p-2 rounded-2xl hover:bg-theme-bg/60 border border-theme-border/40 transition-all cursor-pointer text-theme-text-muted hover:text-theme-text"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
 
-                    <div className="bg-theme-bg/15 border border-theme-border/60 rounded-3xl p-5 md:p-6 min-h-[300px] flex flex-col justify-start">
-                      {(!activeStandup && activeTasks.length === 0) ? (
-                        <div className="flex-grow flex flex-col items-center justify-center text-center py-16 space-y-3 opacity-60">
-                          <div className="w-12 h-12 rounded-full bg-theme-bg flex items-center justify-center border border-theme-border/60 text-theme-text-muted">
-                            <Calendar className="w-5 h-5" />
-                          </div>
-                          <div className="space-y-1 max-w-xs">
-                            <p className="text-xs text-theme-text font-black">لا توجد مساهمات في هذا اليوم</p>
-                            <p className="text-[10px] text-theme-text-muted font-bold leading-normal">لم يسجل {selectedUser.name} أي تقارير أو مهام منجزة في هذا التاريخ.</p>
-                          </div>
+                        {/* العنوان والتاريخ */}
+                        <div className="border-b border-theme-border/40 pb-3 mt-2">
+                          <h4 className="text-sm font-black text-theme-text">
+                            {formatArabicDate(selectedDate)}
+                          </h4>
+                          <p className="text-[10px] text-theme-text-muted mt-0.5 font-bold">
+                            تقرير الأداء والتفاصيل اليومية للشريك <span className="text-theme-accent font-black">{selectedUser.name}</span>
+                          </p>
                         </div>
-                      ) : (
-                        <div className="space-y-6 animate-modal-in">
-                          
-                          {/* لوحة المؤشرات الثلاثية الإبداعية */}
-                          <div className="grid grid-cols-3 gap-3">
+
+                        {(!activeStandup && activeTasks.length === 0) ? (
+                          <div className="py-12 flex flex-col items-center justify-center text-center space-y-3 opacity-60">
+                            <div className="w-12 h-12 rounded-full bg-theme-bg flex items-center justify-center border border-theme-border/60 text-theme-text-muted">
+                              <Calendar className="w-5 h-5" />
+                            </div>
+                            <div className="space-y-1 max-w-xs">
+                              <p className="text-xs text-theme-text font-black">لا توجد مساهمات في هذا اليوم</p>
+                              <p className="text-[10px] text-theme-text-muted font-bold leading-normal">لم يتم تسجيل أي ساعات عمل أو مهام منجزة في هذا التاريخ.</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-5">
                             
-                            {/* بطاقة الساعات */}
-                            <div className="bg-theme-panel border border-theme-border/60 rounded-2xl p-3 flex flex-col items-center justify-center text-center gap-1">
-                              <Clock className="w-4 h-4 text-indigo-400 shrink-0" />
-                              <span className="block text-[8px] font-black text-theme-text-muted">الساعات المسجلة</span>
-                              <span className="text-xs font-bold text-indigo-500 font-mono">
-                                {activeStandup ? formatWorkTime(activeStandup.workMinutes) : '٠ س'}
-                              </span>
-                            </div>
-
-                            {/* بطاقة الإنتاجية */}
-                            <div className="bg-theme-panel border border-theme-border/60 rounded-2xl p-3 flex flex-col items-center justify-center text-center gap-1">
-                              <Star className="w-4 h-4 text-amber-500 shrink-0" />
-                              <span className="block text-[8px] font-black text-theme-text-muted">الإنتاجية</span>
-                              <div className="flex items-center gap-0.5 justify-center">
-                                {activeStandup ? renderStars(activeStandup.productivityScore) : <span className="text-xs font-bold text-theme-text-muted">-</span>}
+                            {/* لوحة المؤشرات الثلاثية */}
+                            <div className="grid grid-cols-3 gap-3">
+                              
+                              {/* بطاقة الساعات */}
+                              <div className="bg-theme-bg/40 border border-theme-border/40 rounded-2xl p-3.5 flex flex-col items-center justify-center text-center gap-1">
+                                <Clock className="w-4.5 h-4.5 text-indigo-400 shrink-0" />
+                                <span className="block text-[8px] font-black text-theme-text-muted">الساعات المسجلة</span>
+                                <span className="text-xs font-bold text-indigo-500 font-mono">
+                                  {activeStandup ? formatWorkTime(activeStandup.workMinutes) : '٠ س'}
+                                </span>
                               </div>
+
+                              {/* بطاقة الإنتاجية */}
+                              <div className="bg-theme-bg/40 border border-theme-border/40 rounded-2xl p-3.5 flex flex-col items-center justify-center text-center gap-1">
+                                <Star className="w-4.5 h-4.5 text-amber-500 shrink-0" />
+                                <span className="block text-[8px] font-black text-theme-text-muted">الإنتاجية</span>
+                                <div className="flex items-center gap-0.5 justify-center">
+                                  {activeStandup ? renderStars(activeStandup.productivityScore) : <span className="text-xs font-bold text-theme-text-muted">-</span>}
+                                </div>
+                              </div>
+
+                              {/* بطاقة المزاج */}
+                              <div className="bg-theme-bg/40 border border-theme-border/40 rounded-2xl p-3.5 flex flex-col items-center justify-center text-center gap-1">
+                                <Smile className="w-4.5 h-4.5 text-emerald-400 shrink-0" />
+                                <span className="block text-[8px] font-black text-theme-text-muted">المزاج والإنجاز</span>
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md truncate max-w-full ${activeStandup ? getMoodDetails(activeStandup.mood).color : 'text-theme-text-muted bg-theme-bg/40'}`}>
+                                  {activeStandup ? getMoodDetails(activeStandup.mood).label : 'لم يحدد'}
+                                </span>
+                              </div>
+
                             </div>
 
-                            {/* بطاقة المزاج */}
-                            <div className="bg-theme-panel border border-theme-border/60 rounded-2xl p-3 flex flex-col items-center justify-center text-center gap-1">
-                              <Smile className="w-4 h-4 text-emerald-400 shrink-0" />
-                              <span className="block text-[8px] font-black text-theme-text-muted">المزاج والإنجاز</span>
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md truncate max-w-full ${activeStandup ? getMoodDetails(activeStandup.mood).color : 'text-theme-text-muted bg-theme-bg/40'}`}>
-                                {activeStandup ? getMoodDetails(activeStandup.mood).label : 'لم يحدد'}
-                              </span>
-                            </div>
+                            {/* نصوص اللقاء اليومي */}
+                            {activeStandup && (
+                              <div className="space-y-4 text-right">
+                                {activeStandup.todayTasks && (
+                                  <div>
+                                    <h5 className="text-[10px] font-black text-theme-text-muted mb-1.5 flex items-center gap-1 justify-start">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-theme-accent"></span>
+                                      <span>ما تم إنجازه اليوم:</span>
+                                    </h5>
+                                    <div className="text-xs text-theme-text bg-theme-bg/30 border border-theme-border/30 rounded-2xl p-4 leading-relaxed font-semibold whitespace-pre-wrap text-right">
+                                      {activeStandup.todayTasks}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {activeStandup.tomorrowTasks && (
+                                  <div>
+                                    <h5 className="text-[10px] font-black text-theme-text-muted mb-1.5 flex items-center gap-1 justify-start">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-theme-accent/60"></span>
+                                      <span>خطة الغد:</span>
+                                    </h5>
+                                    <div className="text-xs text-theme-text bg-theme-bg/30 border border-theme-border/30 rounded-2xl p-4 leading-relaxed font-semibold whitespace-pre-wrap text-right">
+                                      {activeStandup.tomorrowTasks}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {activeStandup.blockers && (
+                                  <div className="bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-2xl p-4 flex gap-2.5 items-start text-right">
+                                    <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                                    <div className="space-y-0.5">
+                                      <h5 className="text-[10px] font-black">العوائق والصعوبات:</h5>
+                                      <p className="text-xs font-bold leading-relaxed whitespace-pre-wrap text-right">{activeStandup.blockers}</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* المهام المكتملة بالتفصيل */}
+                            {activeTasks.length > 0 && (
+                              <div className="space-y-2.5 pt-4 border-t border-theme-border/40">
+                                <h5 className="text-[10px] font-black text-emerald-500 flex items-center gap-1.5 justify-start">
+                                  <CheckCircle2 className="w-4.5 h-4.5" />
+                                  <span>المهام المكتملة في هذا اليوم ({activeTasks.length}):</span>
+                                </h5>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {activeTasks.map((t, idx) => (
+                                    <div key={idx} className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/15 rounded-2xl p-3 text-right shadow-2xs">
+                                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                                      <span className="text-xs text-theme-text font-bold leading-normal truncate" title={t.title}>
+                                        {t.title}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
 
                           </div>
-
-                          {/* نصوص تقرير اللقاء اليومي */}
-                          {activeStandup && (
-                            <div className="space-y-4 text-right">
-                              {activeStandup.todayTasks && (
-                                <div>
-                                  <h5 className="text-[10px] font-black text-theme-text-muted mb-1.5 flex items-center gap-1 justify-start">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-theme-accent"></span>
-                                    <span>ما تم إنجازه اليوم:</span>
-                                  </h5>
-                                  <div className="text-xs text-theme-text bg-theme-panel/50 border border-theme-border/40 rounded-2xl p-4 leading-relaxed font-semibold whitespace-pre-wrap">
-                                    {activeStandup.todayTasks}
-                                  </div>
-                                </div>
-                              )}
-
-                              {activeStandup.tomorrowTasks && (
-                                <div>
-                                  <h5 className="text-[10px] font-black text-theme-text-muted mb-1.5 flex items-center gap-1 justify-start">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-theme-accent/60"></span>
-                                    <span>خطة الغد:</span>
-                                  </h5>
-                                  <div className="text-xs text-theme-text bg-theme-panel/50 border border-theme-border/40 rounded-2xl p-4 leading-relaxed font-semibold whitespace-pre-wrap">
-                                    {activeStandup.tomorrowTasks}
-                                  </div>
-                                </div>
-                              )}
-
-                              {activeStandup.blockers && (
-                                <div className="bg-rose-500/10 border border-rose-500/20 text-rose-500 rounded-2xl p-4 flex gap-2.5 items-start text-right">
-                                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                                  <div className="space-y-0.5">
-                                    <h5 className="text-[10px] font-black">العوائق والصعوبات:</h5>
-                                    <p className="text-xs font-bold leading-relaxed whitespace-pre-wrap">{activeStandup.blockers}</p>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* المهام المكتملة بالتفصيل */}
-                          {activeTasks.length > 0 && (
-                            <div className="space-y-2.5 pt-4 border-t border-theme-border/40">
-                              <h5 className="text-[10px] font-black text-emerald-500 flex items-center gap-1.5 justify-start">
-                                <CheckCircle2 className="w-4 h-4" />
-                                <span>المهام المكتملة في هذا اليوم ({activeTasks.length}):</span>
-                              </h5>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {activeTasks.map((t, idx) => (
-                                  <div key={idx} className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/15 rounded-2xl p-3 text-right shadow-2xs">
-                                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                                    <span className="text-xs text-theme-text font-bold leading-normal truncate" title={t.title}>
-                                      {t.title}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                 </div>
               )
